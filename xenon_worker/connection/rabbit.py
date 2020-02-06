@@ -3,8 +3,8 @@ import json
 import asyncio
 import aioredis
 
-from httpd import HTTPClient
-from entities import Guild, Channel, Role, Member, User
+from .httpd import HTTPClient
+from .entities import Guild, Channel, Role, Member, User
 
 
 class RabbitClient:

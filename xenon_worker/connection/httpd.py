@@ -34,7 +34,7 @@ import datetime
 
 import aiohttp
 
-from errors import HTTPException, Forbidden, NotFound, LoginFailure, GatewayNotFound
+from .errors import HTTPException, Forbidden, NotFound, LoginFailure, GatewayNotFound
 
 log = logging.getLogger(__name__)
 

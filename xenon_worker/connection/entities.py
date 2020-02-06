@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 
-from enums import *
+from .enums import *
 
 
 DISCORD_EPOCH = 1420070400000
