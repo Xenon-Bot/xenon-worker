@@ -2,7 +2,7 @@ from datetime import datetime
 import re
 
 from .enums import *
-
+from .permissions import Permissions, PermissionOverwrite
 
 DISCORD_EPOCH = 1420070400000
 DISCORD_CDN = "https://cdn.discordapp.com"
@@ -61,7 +61,7 @@ class Entity(Snowflake):
 
 class Role(Entity):
     def _preprocess(self, data):
-        self.permissions = None
+        self.permissions = Permissions(data["permissions"])
 
 
 class Channel(Entity):
@@ -71,7 +71,17 @@ class Channel(Entity):
 
     def _preprocess(self, data):
         self.type = ChannelType(data["type"])
-        self.permission_overwrites = None
+        self.permission_overwrites = [
+            (
+                overwrite["id"],
+                PermissionOverwrite.from_pair(
+                    Permissions(overwrite["allow"]),
+                    Permissions(overwrite["deny"])
+                )
+            )
+            for overwrite in sorted(data.get("overwrites", []), key=lambda o: o["id"] == self.guild_id, reverse=True)
+            # @everyone first
+        ]
 
     @property
     def icon_url(self):
@@ -117,6 +127,21 @@ class Member(User):
             if role.id in self.roles:
                 yield role
 
+    def permissions_for_guild(self, guild):
+        roles = list(sorted(self.roles_from_guild(guild), key=lambda r: r.position))
+        base = roles.pop(0).permissions  # @everyone
+        for role in roles:
+            base.value = base.value & role.permissions.value
+
+        return base
+
+    def permissions_for_channel(self, guild, channel):
+        base = self.permissions_for_guild(guild)
+        roles = [r.id for r in self.roles_from_guild(guild)]
+        for id, ov in channel.permission_overwrites:
+            if id == self.id or id == guild.id or id in roles:
+                base.handle_overwrite(allow=ov.allow, deny=ov.deny)
+
 
 class Guild(Entity):
     __slots__ = ("name", "icon", "splash", "owner", "owner_id", "permissions", "region", "afk_channel_id",
@@ -128,7 +153,7 @@ class Guild(Entity):
                  "premium_tier", "premium_subscription_count", "preferred_locale")
 
     def _preprocess(self, data):
-        self.permissions = None
+        self.permissions = Permissions(data.get("permissions")) if data.get("permissions") is not None else None
         self.verification_level = VerificationLevel(data["verification_level"])
         self.default_message_notifications = DefaultMessageNotifications(data["default_message_notifications"])
         self.explicit_content_filter = ExplicitContentFilter(data["explicit_content_filter"])
