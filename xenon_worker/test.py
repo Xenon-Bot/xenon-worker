@@ -1,6 +1,7 @@
 import asyncio
 from connection.rabbit import RabbitClient
 from connection.entities import Message
+import config
 
 
 class Client(RabbitClient):
@@ -14,7 +15,7 @@ class Client(RabbitClient):
 
 async def test():
     client = Client("amqp://guest:guest@localhost/")
-    await client.start("NDEwMTM4NzA2NDkwNDI1MzQ0.XjYEqg.wvtIUh224oOiT26RySx6XRTGiu8", "command.normal")
+    await client.start(config.token, "command.normal")
 
 
 loop = asyncio.get_event_loop()
