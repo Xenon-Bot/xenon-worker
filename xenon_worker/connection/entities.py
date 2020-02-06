@@ -79,9 +79,19 @@ class Channel(Entity):
                     Permissions(overwrite["deny"])
                 )
             )
-            for overwrite in sorted(data.get("overwrites", []), key=lambda o: o["id"] == self.guild_id, reverse=True)
-            # @everyone first
+            for overwrite in data.get("permission_overwrites", [])
         ]
+
+    def sort_overwrites(self, guild_id):
+        """
+        Move overwrites for @everyone to index 0 because it needs to be treated differently
+        """
+        everyone_index = 0
+        for i, (id, ov) in enumerate(self.permission_overwrites):
+            if id == guild_id:
+                everyone_index = i
+
+        self.permission_overwrites.insert(0, self.permission_overwrites.pop(everyone_index))
 
     @property
     def icon_url(self):
@@ -124,23 +134,45 @@ class Member(User):
 
     def roles_from_guild(self, guild):
         for role in guild.roles:
-            if role.id in self.roles:
+            if role.id in self.roles or role.id == guild.id:
                 yield role
 
     def permissions_for_guild(self, guild):
+        if self.id == guild.owner_id:
+            return Permissions.all()
+
         roles = list(sorted(self.roles_from_guild(guild), key=lambda r: r.position))
         base = roles.pop(0).permissions  # @everyone
         for role in roles:
-            base.value = base.value & role.permissions.value
+            base.value |= role.permissions.value
 
         return base
 
     def permissions_for_channel(self, guild, channel):
+        if self.id == guild.owner_id:
+            return Permissions.all()
+
         base = self.permissions_for_guild(guild)
+        if base.administrator:
+            return base
+
         roles = [r.id for r in self.roles_from_guild(guild)]
+        channel.sort_overwrites(guild.id)
         for id, ov in channel.permission_overwrites:
             if id == self.id or id == guild.id or id in roles:
                 base.handle_overwrite(allow=ov.allow, deny=ov.deny)
+
+        if not base.send_messages:
+            base.send_tts_messages = False
+            base.mention_everyone = False
+            base.embed_links = False
+            base.attach_files = False
+
+        if not base.read_messages:
+            denied = Permissions.all_channel()
+            base.value &= ~denied.value
+
+        return base
 
 
 class Guild(Entity):
