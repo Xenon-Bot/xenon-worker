@@ -1,7 +1,6 @@
 import asyncio
-import config
-from commands.bot import RabbitBot
-from commands.module import Module
+from commands import RabbitBot
+from commands import Module
 
 
 bot = RabbitBot("x!", "amqp://guest:guest@localhost/")
@@ -9,13 +8,16 @@ bot = RabbitBot("x!", "amqp://guest:guest@localhost/")
 
 
 @bot.command()
-async def jan(ctx):
-    await ctx.send("Ich bin ein Jan!")
+async def admin(ctx):
+    guild = await ctx.get_guild()
+    channel = await ctx.get_channel()
+    permissions = ctx.author.permissions_for_channel(guild, channel)
+    print(permissions)
+    if permissions.administrator:
+        await ctx.send("You are admin")
 
-
-@jan.command()
-async def mueller(ctx):
-    await ctx.send("Ich bin ein Jan Müller!")
+    else:
+        await ctx.send("You are not admin")
 
 
 class TestModule(Module):
@@ -30,7 +32,7 @@ class TestModule(Module):
 
 async def test():
     bot.add_module(TestModule(bot))
-    await bot.start(config.token, "command.normal")
+    await bot.start(open("token.txt").read(), "command.normal")
 
 
 loop = asyncio.get_event_loop()
