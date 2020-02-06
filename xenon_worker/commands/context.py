@@ -3,11 +3,11 @@ class Context:
         self.client = client
         self.msg = msg
 
-    async def get_channel(self):
-        pass
+    def get_channel(self):
+        return self.client.get_channel(self.msg.guild_id, self.msg.channel_id)
 
     async def get_guild(self):
-        pass
+        return self.client.get_guild(self.msg.guild_id)
 
     def send(self, *args, **kwargs):
         return self.client.http.send_message(self.msg.channel_id, *args, **kwargs)

@@ -14,7 +14,7 @@ class RabbitBot(RabbitClient, CommandTable):
         self.modules = []
 
     def _process_listeners(self, key, data):
-        s_listeners = self.static_listeners.get(key.split(".")[1], [])
+        s_listeners = self.static_listeners.get(key.split(".")[-1], [])
         for listener in s_listeners:
             pre_ctx = []
             # Add self parameter to module bound callbacks

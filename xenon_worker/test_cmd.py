@@ -5,7 +5,7 @@ from commands.module import Module
 
 
 bot = RabbitBot("x!", "amqp://guest:guest@localhost/")
-# Listeners and static listeners need to be rewritten to support * for shard_id
+# Permissions class & Overwrites
 
 
 @bot.command()

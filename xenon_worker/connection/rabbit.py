@@ -23,6 +23,12 @@ class RabbitClient:
 
     def _process_listeners(self, key, data):
         listeners = self.listeners.get(key, [])
+
+        # Dispatch shard wildcards too
+        parts = key.split(".")
+        if len(parts) == 2:
+            listeners.extend(self.listeners.get("*." + parts["1"], []))
+
         to_remove = []
         for i, (future, check) in enumerate(listeners):
             if future.cancelled():
