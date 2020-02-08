@@ -27,7 +27,7 @@ class RabbitClient:
         # Dispatch shard wildcards too
         parts = key.split(".")
         if len(parts) == 2:
-            listeners.extend(self.listeners.get("*." + parts["1"], []))
+            listeners.extend(self.listeners.get("*." + parts[1], []))
 
         to_remove = []
         for i, (future, check) in enumerate(listeners):
