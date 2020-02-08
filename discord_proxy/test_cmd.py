@@ -3,7 +3,7 @@ from commands import RabbitBot
 from commands import Module
 
 
-bot = RabbitBot("x!", "amqp://guest:guest@localhost/")
+bot = RabbitBot("##!!", "amqp://guest:guest@localhost/")
 # Permissions class & Overwrites
 
 
