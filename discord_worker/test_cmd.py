@@ -32,7 +32,7 @@ class TestModule(Module):
 
 async def test():
     bot.add_module(TestModule(bot))
-    await bot.start(open("token.txt").read(), "command.normal")
+    await bot.start("command.normal")
 
 
 loop = asyncio.get_event_loop()

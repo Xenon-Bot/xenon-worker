@@ -62,7 +62,7 @@ def _parse_ratelimit_header(request, *, use_clock=False):
 
 
 class Route:
-    BASE = 'https://discordapp.com/api/v7'
+    BASE = 'http://localhost:8080'
 
     def __init__(self, method, path, **parameters):
         self.path = path
@@ -109,17 +109,9 @@ class HTTPClient:
         self.loop = asyncio.get_event_loop() if loop is None else loop
         self.connector = connector
         self.__session = None  # filled in static_login
-        self._locks = weakref.WeakValueDictionary()
-        self._global_over = asyncio.Event()
-        self._global_over.set()
-        self.token = None
-        self.bot_token = False
         self.proxy = proxy
         self.proxy_auth = proxy_auth
         self.use_clock = not unsync_clock
-
-        user_agent = 'DiscordBot (https://github.com/Rapptz/discord.py {0}) Python/{1[0]}.{1[1]} aiohttp/{2}'
-        self.user_agent = user_agent.format("0.1", sys.version_info, aiohttp.__version__)
 
     def recreate(self):
         if self.__session.closed:
@@ -130,21 +122,9 @@ class HTTPClient:
         method = route.method
         url = route.url
 
-        lock = self._locks.get(bucket)
-        if lock is None:
-            lock = asyncio.Lock()
-            if bucket is not None:
-                self._locks[bucket] = lock
-
         # header creation
-        headers = {
-            'User-Agent': self.user_agent,
-            'X-Ratelimit-Precision': 'millisecond',
-        }
+        headers = {}
 
-        if self.token is not None:
-            headers['Authorization'] = 'Bot ' + self.token if self.bot_token else self.token
-        # some checking if it's a JSON request
         if 'json' in kwargs:
             headers['Content-Type'] = 'application/json'
             kwargs['data'] = to_json(kwargs.pop('json'))
@@ -159,87 +139,54 @@ class HTTPClient:
 
         kwargs['headers'] = headers
 
-        # Proxy support
-        if self.proxy is not None:
-            kwargs['proxy'] = self.proxy
-        if self.proxy_auth is not None:
-            kwargs['proxy_auth'] = self.proxy_auth
+        for tries in range(5):
+            if files:
+                for f in files:
+                    f.reset(seek=tries)
 
-        if not self._global_over.is_set():
-            # wait until the global lock is complete
-            await self._global_over.wait()
+            async with self.__session.request(method, url, **kwargs) as r:
+                log.debug('%s %s with %s has returned %s', method, url, kwargs.get('data'), r.status)
 
-        await lock.acquire()
-        with MaybeUnlock(lock) as maybe_lock:
-            for tries in range(5):
-                if files:
-                    for f in files:
-                        f.reset(seek=tries)
+                # even errors have text involved in them so this is safe to call
+                data = await json_or_text(r)
 
-                async with self.__session.request(method, url, **kwargs) as r:
-                    log.debug('%s %s with %s has returned %s', method, url, kwargs.get('data'), r.status)
+                # the request was successful so just return the text/json
+                if 300 > r.status >= 200:
+                    log.debug('%s %s has received %s', method, url, data)
+                    return data
 
-                    # even errors have text involved in them so this is safe to call
-                    data = await json_or_text(r)
-
-                    # check if we have rate limit header information
-                    remaining = r.headers.get('X-Ratelimit-Remaining')
-                    if remaining == '0' and r.status != 429:
-                        # we've depleted our current bucket
-                        delta = _parse_ratelimit_header(r, use_clock=self.use_clock)
-                        log.debug('A rate limit bucket has been exhausted (bucket: %s, retry: %s).', bucket, delta)
-                        maybe_lock.defer()
-                        self.loop.call_later(delta, lock.release)
-
-                    # the request was successful so just return the text/json
-                    if 300 > r.status >= 200:
-                        log.debug('%s %s has received %s', method, url, data)
-                        return data
-
-                    # we are being rate limited
-                    if r.status == 429:
-                        if not isinstance(data, dict):
-                            # Banned by Cloudflare more than likely.
-                            raise HTTPException(r, data)
-
-                        fmt = 'We are being rate limited. Retrying in %.2f seconds. Handled under the bucket "%s"'
-
-                        # sleep a bit
-                        retry_after = data['retry_after'] / 1000.0
-                        log.warning(fmt, retry_after, bucket)
-
-                        # check if it's a global rate limit
-                        is_global = data.get('global', False)
-                        if is_global:
-                            log.warning('Global rate limit has been hit. Retrying in %.2f seconds.', retry_after)
-                            self._global_over.clear()
-
-                        await asyncio.sleep(retry_after)
-                        log.debug('Done sleeping for the rate limit. Retrying...')
-
-                        # release the global lock now that the
-                        # global rate limit has passed
-                        if is_global:
-                            self._global_over.set()
-                            log.debug('Global rate limit is now over.')
-
-                        continue
-
-                    # we've received a 500 or 502, unconditional retry
-                    if r.status in {500, 502}:
-                        await asyncio.sleep(1 + tries * 2)
-                        continue
-
-                    # the usual error cases
-                    if r.status == 403:
-                        raise Forbidden(r, data)
-                    elif r.status == 404:
-                        raise NotFound(r, data)
-                    else:
+                # we are being rate limited
+                if r.status == 429:
+                    if not isinstance(data, dict):
+                        # Banned by Cloudflare more than likely.
                         raise HTTPException(r, data)
 
-            # We've run out of retries, raise.
-            raise HTTPException(r, data)
+                    fmt = 'We are being rate limited. Retrying in %.2f seconds. Handled under the bucket "%s"'
+
+                    # sleep a bit
+                    retry_after = data['retry_after'] / 1000.0
+                    log.warning(fmt, retry_after, bucket)
+
+                    await asyncio.sleep(retry_after)
+                    log.debug('Done sleeping for the rate limit. Retrying...')
+
+                    continue
+
+                # we've received a 500 or 502, unconditional retry
+                if r.status in {500, 502}:
+                    await asyncio.sleep(1 + tries * 2)
+                    continue
+
+                # the usual error cases
+                if r.status == 403:
+                    raise Forbidden(r, data)
+                elif r.status == 404:
+                    raise NotFound(r, data)
+                else:
+                    raise HTTPException(r, data)
+
+        # We've run out of retries, raise.
+        raise HTTPException(r, data)
 
     async def get_from_cdn(self, url):
         async with self.__session.get(url) as resp:
@@ -258,23 +205,15 @@ class HTTPClient:
         if self.__session:
             await self.__session.close()
 
-    def _token(self, token, *, bot=True):
-        self.token = token
-        self.bot_token = bot
-        self._ack_token = None
-
     # login management
 
-    async def static_login(self, token, *, bot):
+    async def static_login(self):
         # Necessary to get aiohttp to stop complaining about session creation
         self.__session = aiohttp.ClientSession(connector=self.connector)
-        old_token, old_bot = self.token, self.bot_token
-        self._token(token, bot=bot)
 
         try:
             data = await self.request(Route('GET', '/users/@me'))
         except HTTPException as exc:
-            self._token(old_token, bot=old_bot)
             if exc.response.status == 401:
                 raise LoginFailure('Improper token has been passed.') from exc
             raise

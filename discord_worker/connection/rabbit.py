@@ -165,8 +165,8 @@ class RabbitClient:
 
         return result
 
-    async def start(self, discord_token, command_queue, subscriptions=None):
-        user_data = await self.http.static_login(discord_token, bot=True)
+    async def start(self, command_queue, subscriptions=None):
+        user_data = await self.http.static_login()
         self.user = User(user_data)
 
         self.redis = await aioredis.create_redis_pool('redis://localhost')
