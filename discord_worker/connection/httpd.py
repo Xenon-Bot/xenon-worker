@@ -1,64 +1,13 @@
-# -*- coding: utf-8 -*-
-
-"""
-The MIT License (MIT)
-
-Copyright (c) 2015-2020 Rapptz
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-"""
-
 import asyncio
-import json
 import logging
-import sys
 from urllib.parse import quote as _uriquote
-import weakref
-import datetime
+from . import utils
 
 import aiohttp
 
 from .errors import HTTPException, Forbidden, NotFound, LoginFailure, GatewayNotFound
 
 log = logging.getLogger(__name__)
-
-
-async def json_or_text(response):
-    text = await response.text(encoding='utf-8')
-    if response.headers['content-type'] == 'application/json':
-        return json.loads(text)
-    return text
-
-
-def to_json(obj):
-    return json.dumps(obj, separators=(',', ':'), ensure_ascii=True)
-
-
-def _parse_ratelimit_header(request, *, use_clock=False):
-    reset_after = request.headers.get('X-Ratelimit-Reset-After')
-    if use_clock or not reset_after:
-        utc = datetime.timezone.utc
-        now = datetime.datetime.now(utc)
-        reset = datetime.datetime.fromtimestamp(float(request.headers['X-Ratelimit-Reset']), utc)
-        return (reset - now).total_seconds()
-    else:
-        return float(reset_after)
 
 
 class Route:
@@ -112,6 +61,8 @@ class HTTPClient:
         self.proxy = proxy
         self.proxy_auth = proxy_auth
         self.use_clock = not unsync_clock
+        self.bot_token = False
+        self.token = None
 
     def recreate(self):
         if self.__session.closed:
@@ -123,11 +74,13 @@ class HTTPClient:
         url = route.url
 
         # header creation
-        headers = {}
+        headers = {
+            "X-Ratelimit-Bucket": bucket
+        }
 
         if 'json' in kwargs:
             headers['Content-Type'] = 'application/json'
-            kwargs['data'] = to_json(kwargs.pop('json'))
+            kwargs['data'] = utils.to_json(kwargs.pop('json'))
 
         try:
             reason = kwargs.pop('reason')
@@ -148,7 +101,7 @@ class HTTPClient:
                 log.debug('%s %s with %s has returned %s', method, url, kwargs.get('data'), r.status)
 
                 # even errors have text involved in them so this is safe to call
-                data = await json_or_text(r)
+                data = await utils.json_or_text(r)
 
                 # the request was successful so just return the text/json
                 if 300 > r.status >= 200:
@@ -205,15 +158,23 @@ class HTTPClient:
         if self.__session:
             await self.__session.close()
 
+    def _token(self, token, *, bot=True):
+        self.token = token
+        self.bot_token = bot
+        self._ack_token = None
+
     # login management
 
-    async def static_login(self):
+    async def static_login(self, token=False, *, bot=True):
         # Necessary to get aiohttp to stop complaining about session creation
         self.__session = aiohttp.ClientSession(connector=self.connector)
+        old_token, old_bot = self.token, self.bot_token
+        self._token(token, bot=bot)
 
         try:
             data = await self.request(Route('GET', '/users/@me'))
         except HTTPException as exc:
+            self._token(old_token, bot=old_bot)
             if exc.response.status == 401:
                 raise LoginFailure('Improper token has been passed.') from exc
             raise
@@ -296,7 +257,7 @@ class HTTPClient:
         if nonce:
             payload['nonce'] = nonce
 
-        form.add_field('payload_json', to_json(payload))
+        form.add_field('payload_json', utils.to_json(payload))
         if len(files) == 1:
             file = files[0]
             form.add_field('file', file.fp, filename=file.filename, content_type='application/octet-stream')
