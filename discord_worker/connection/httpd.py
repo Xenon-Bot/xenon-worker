@@ -2,6 +2,7 @@ import asyncio
 import logging
 from urllib.parse import quote as _uriquote
 from . import utils
+from os import environ as env
 
 import aiohttp
 
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 
 
 class Route:
-    BASE = 'http://localhost:8080'
+    BASE = env.get("PROXY_URL") or 'http://localhost:80'
 
     def __init__(self, method, path, **parameters):
         self.path = path
