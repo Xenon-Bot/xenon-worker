@@ -3,7 +3,7 @@ from commands import RabbitBot
 from commands import Module
 
 
-bot = RabbitBot("##!!", "amqp://guest:guest@localhost/")
+bot = RabbitBot("#!", "amqp://guest:guest@localhost/")
 # Permissions class & Overwrites
 
 
@@ -32,7 +32,7 @@ class TestModule(Module):
 
 async def test():
     bot.add_module(TestModule(bot))
-    await bot.start("command.normal")
+    await bot.start("main")
 
 
 loop = asyncio.get_event_loop()
