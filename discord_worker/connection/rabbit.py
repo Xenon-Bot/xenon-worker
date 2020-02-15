@@ -166,3 +166,7 @@ class RabbitClient:
 
         await self.channel.basic_consume(self.queue.queue, self._message_received, no_ack=True)
         await self.channel.basic_consume(command_queue, self._message_received, no_ack=True)
+
+    def run(self, *args, **kwargs):
+        self.loop.create_task(self.start(*args, **kwargs))
+        self.loop.run_forever()
