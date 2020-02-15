@@ -167,6 +167,7 @@ class RabbitClient:
                 self.static_subscriptions.add(subscription)
 
             await self.channel.basic_consume(self.queue.queue, self._message_received, no_ack=True)
+            await self.channel.queue_declare(queue=command_queue, arguments={"x-max-length": 10000})
             await self.channel.basic_consume(command_queue, self._message_received, no_ack=True)
 
         except ConnectionError:
