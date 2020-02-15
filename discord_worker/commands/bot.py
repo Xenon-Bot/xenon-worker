@@ -1,5 +1,5 @@
-from connection.rabbit import RabbitClient
-from connection.entities import Message
+from ..connection.rabbit import RabbitClient
+from ..connection.entities import Message
 from .command import CommandTable
 from .context import Context
 from .module import Listener
