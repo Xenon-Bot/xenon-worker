@@ -1,15 +1,15 @@
 import aiormq
 import json
 import asyncio
-import aioredis
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from .httpd import HTTPClient
 from .entities import Guild, Channel, Role, Member, User
 
 
 class RabbitClient:
-    def __init__(self, url, loop=None):
-        self.url = url
+    def __init__(self, rabbit_url, mongo_url, loop=None):
+        self.url = rabbit_url
         self.user = None
         self.loop = loop or asyncio.get_event_loop()
         self.connection = None
@@ -19,7 +19,8 @@ class RabbitClient:
         self.static_subscriptions = set()
 
         self.http = HTTPClient(loop=loop)
-        self.redis = None
+        self.mongo = AsyncIOMotorClient(host=mongo_url)
+        self.cache = self.mongo.cache
 
     def _process_listeners(self, key, data):
         listeners = self.listeners.get(key, [])
@@ -112,32 +113,38 @@ class RabbitClient:
         return await asyncio.wait_for(future, timeout)
 
     async def get_guild(self, guild_id):
-        guild = await self.redis.hget("guilds", guild_id)
-        channels = await self.redis.hgetall("%s.channels" % guild_id)
-        roles = await self.redis.hgetall("%s.roles" % guild_id)
+        guild = await self.cache.guilds.find_one({"_id": guild_id})
+        channels = self.get_channels(guild_id)
+        roles = self.get_roles(guild_id)
         data = {
             **json.loads(guild),
-            "channels": [json.loads(c) for c in channels.values()],
-            "roles": [json.loads(c) for c in roles.values()]
+            "channels": [json.loads(c) async for c in channels],
+            "roles": [json.loads(r) async for r in roles]
         }
         return Guild(data)
 
-    async def get_channel(self, guild_id, channel_id):
-        channel = await self.redis.hget("%s.channels" % guild_id, channel_id)
+    def get_channels(self, guild_id, **filter_):
+        return self.cache.channels.find({"guild_id": guild_id, **filter_})
+
+    async def get_channel(self, channel_id):
+        channel = await self.cache.channels.find_one({"_id": channel_id})
         if channel is None:
             return None
 
         return Channel(json.loads(channel)) if channel is not None else None
 
-    async def get_role(self, guild_id, role_id):
-        role = await self.redis.hget("%s.roles" % guild_id, role_id)
+    def get_roles(self, guild_id, **filter_):
+        return self.cache.roles.find({"guild_id": guild_id, **filter_})
+
+    async def get_role(self, role_id):
+        role = await self.cache.roles.find_one({"_id": role_id})
         if role is None:
             return None
 
         return Role(json.loads(role))
 
     async def get_member(self, guild_id, member_id):
-        member = await self.redis.hget("%s.members" % guild_id, member_id)
+        member = await self.cache.members.find_one({"guild_id": guild_id, "id": member_id})
         if member is None:
             return None
 
@@ -146,30 +153,10 @@ class RabbitClient:
     def get_bot_member(self, guild_id):
         return self.get_member(guild_id, self.user.id)
 
-    def get_shards(self):
-        return self.redis.hgetall("shards")
-
-    async def get_shard_count(self):
-        return int(await self.redis.get("shard_count") or 1)
-
-    def get_guild_count(self):
-        return self.redis.hlen("guilds")
-
-    async def get_guild_counts(self):
-        shard_count = await self.get_shard_count()
-        guilds_ids = await self.redis.hkeys("guilds")
-        result = {str(si): 0 for si in range(shard_count)}
-        for guild_id in guilds_ids:
-            shard_id = (int(guild_id) >> 22) % shard_count
-            result[str(shard_id)] += 1
-
-        return result
-
     async def start(self, command_queue, subscriptions=None):
         user_data = await self.http.static_login()
         self.user = User(user_data)
 
-        self.redis = await aioredis.create_redis_pool('redis://localhost')
         self.connection = await aiormq.connect(self.url)
         self.channel = await self.connection.channel()
         self.queue = await self.channel.queue_declare(queue='', arguments={"x-max-length": 1000}, exclusive=True)

@@ -1,6 +1,6 @@
 import asyncio
-from commands import RabbitBot
-from commands import Module
+from .commands import RabbitBot
+from .commands import Module
 
 
 bot = RabbitBot("#!", "amqp://guest:guest@localhost/")

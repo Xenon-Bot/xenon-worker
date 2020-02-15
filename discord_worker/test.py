@@ -1,6 +1,6 @@
 import asyncio
-from connection import RabbitClient
-from connection import Message
+from .connection import RabbitClient
+from .connection import Message
 
 
 class Client(RabbitClient):

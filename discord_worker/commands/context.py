@@ -4,7 +4,7 @@ class Context:
         self.msg = msg
 
     def get_channel(self):
-        return self.client.get_channel(self.msg.guild_id, self.msg.channel_id)
+        return self.client.get_channel(self.msg.channel_id)
 
     def get_guild(self):
         return self.client.get_guild(self.msg.guild_id)
