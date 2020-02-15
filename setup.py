@@ -12,6 +12,7 @@ setup(
     install_requires=[
         "aiohttp==3.6.2",
         "aiormq==3.2.0",
-        "motor==2.1.0"
+        "motor==2.1.0",
+        "ujson==1.35"
     ]
 )
