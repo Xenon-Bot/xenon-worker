@@ -1,6 +1,7 @@
 import aiormq
 import json
 import asyncio
+import traceback
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from .httpd import HTTPClient
@@ -154,18 +155,24 @@ class RabbitClient:
         return self.get_member(guild_id, self.user.id)
 
     async def start(self, command_queue, subscriptions=None):
-        user_data = await self.http.static_login()
-        self.user = User(user_data)
+        try:
+            user_data = await self.http.static_login()
+            self.user = User(user_data)
 
-        self.connection = await aiormq.connect(self.url)
-        self.channel = await self.connection.channel()
-        self.queue = await self.channel.queue_declare(queue='', arguments={"x-max-length": 1000}, exclusive=True)
-        for subscription in subscriptions or []:
-            await self.channel.queue_bind(self.queue.queue, "events", subscription)
-            self.static_subscriptions.add(subscription)
+            self.connection = await aiormq.connect(self.url)
+            self.channel = await self.connection.channel()
+            self.queue = await self.channel.queue_declare(queue='', arguments={"x-max-length": 1000}, exclusive=True)
+            for subscription in subscriptions or []:
+                await self.channel.queue_bind(self.queue.queue, "events", subscription)
+                self.static_subscriptions.add(subscription)
 
-        await self.channel.basic_consume(self.queue.queue, self._message_received, no_ack=True)
-        await self.channel.basic_consume(command_queue, self._message_received, no_ack=True)
+            await self.channel.basic_consume(self.queue.queue, self._message_received, no_ack=True)
+            await self.channel.basic_consume(command_queue, self._message_received, no_ack=True)
+
+        except ConnectionError:
+            traceback.print_exc()
+            await asyncio.sleep(5)
+            return await self.start(command_queue, subscriptions)
 
     def run(self, *args, **kwargs):
         self.loop.create_task(self.start(*args, **kwargs))
