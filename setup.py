@@ -9,4 +9,9 @@ setup(
     license='MIT',
     packages=find_packages(),
     python_requires='>=3.6',
+    install_requires=[
+        "aiohttp==3.6.2",
+        "aiormq==3.2.0",
+        "motor==2.1.0"
+    ]
 )
