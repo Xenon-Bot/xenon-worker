@@ -1,2 +1,2 @@
-from commands import *
-from connection import *
+from .commands import *
+from .connection import *
