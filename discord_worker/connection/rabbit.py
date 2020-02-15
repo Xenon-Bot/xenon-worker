@@ -118,9 +118,9 @@ class RabbitClient:
         channels = self.get_channels(guild_id)
         roles = self.get_roles(guild_id)
         data = {
-            **json.loads(guild),
-            "channels": [json.loads(c) async for c in channels],
-            "roles": [json.loads(r) async for r in roles]
+            **guild,
+            "channels": [c async for c in channels],
+            "roles": [r async for r in roles]
         }
         return Guild(data)
 
@@ -132,7 +132,7 @@ class RabbitClient:
         if channel is None:
             return None
 
-        return Channel(json.loads(channel)) if channel is not None else None
+        return Channel(channel) if channel is not None else None
 
     def get_roles(self, guild_id, **filter_):
         return self.cache.roles.find({"guild_id": guild_id, **filter_})
@@ -142,14 +142,14 @@ class RabbitClient:
         if role is None:
             return None
 
-        return Role(json.loads(role))
+        return Role(role)
 
     async def get_member(self, guild_id, member_id):
         member = await self.cache.members.find_one({"guild_id": guild_id, "id": member_id})
         if member is None:
             return None
 
-        return Member(json.loads(member))
+        return Member(member)
 
     def get_bot_member(self, guild_id):
         return self.get_member(guild_id, self.user.id)

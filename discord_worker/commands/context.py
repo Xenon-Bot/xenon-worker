@@ -3,6 +3,10 @@ class Context:
         self.client = client
         self.msg = msg
 
+    @property
+    def bot(self):
+        return self.client
+
     def get_channel(self):
         return self.client.get_channel(self.msg.channel_id)
 
