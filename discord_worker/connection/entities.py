@@ -122,7 +122,7 @@ class Member(User):
 
     def _preprocess(self, data):
         self.user = User(data["user"])
-        self.joined_at = parse_time(data["joined_at"])
+        self.joined_at = parse_time(data.get("joined_at"))
         self.premium_since = parse_time(data.get("premium_since"))
 
     def __getattr__(self, item):
