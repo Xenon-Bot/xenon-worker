@@ -119,8 +119,8 @@ class RabbitClient:
 
     async def get_guild(self, guild_id):
         guild = await self.cache.guilds.find_one({"_id": guild_id})
-        channels = self.get_channels(guild_id)
-        roles = self.get_roles(guild_id)
+        channels = self.cache.channels.find({"guild_id": guild_id})
+        roles = self.cache.roles.find({"guild_id": guild_id})
         data = {
             **guild,
             "channels": [c async for c in channels],
@@ -128,8 +128,9 @@ class RabbitClient:
         }
         return Guild(data)
 
-    def get_channels(self, guild_id, **filter_):
-        return self.cache.channels.find({"guild_id": guild_id, **filter_})
+    async def get_channels(self, guild_id, **filter_):
+        async for channel in self.cache.channels.find({"guild_id": guild_id, **filter_}):
+            yield Channel(channel)
 
     async def get_channel(self, channel_id):
         channel = await self.cache.channels.find_one({"_id": channel_id})
@@ -138,8 +139,9 @@ class RabbitClient:
 
         return Channel(channel) if channel is not None else None
 
-    def get_roles(self, guild_id, **filter_):
-        return self.cache.roles.find({"guild_id": guild_id, **filter_})
+    async def get_roles(self, guild_id, **filter_):
+        async for role in self.cache.roles.find({"guild_id": guild_id, **filter_}):
+            yield Role(role)
 
     async def get_role(self, role_id):
         role = await self.cache.roles.find_one({"_id": role_id})
