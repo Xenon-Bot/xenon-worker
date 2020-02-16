@@ -16,15 +16,7 @@ class RabbitBot(RabbitClient, CommandTable):
     def _process_listeners(self, key, *args, **kwargs):
         s_listeners = self.static_listeners.get(key.split(".")[-1], [])
         for listener in s_listeners:
-            pre_ctx = []
-            # Add self parameter to module bound callbacks
-            for module in self.modules:
-                attr = getattr(module, listener.callback.__name__, None)
-                if attr is listener:
-                    pre_ctx.append(module)
-                    break
-
-            self.loop.create_task(listener.callback(*pre_ctx, *args, **kwargs))
+            self.loop.create_task(listener.execute(*args, **kwargs))
 
     async def process_commands(self, msg):
         parts = msg.content[len(self.prefix):].split(" ")
@@ -33,17 +25,9 @@ class RabbitBot(RabbitClient, CommandTable):
         except ValueError:
             return
 
-        pre_ctx = []
-        # Add self parameter to module bound callbacks
-        for module in self.modules:
-            attr = getattr(module, cmd.callback.__name__, None)
-            if attr is cmd:
-                pre_ctx.append(module)
-                break
-
         ctx = Context(self, msg)
         try:
-            await cmd.execute(pre_ctx, ctx, parts)
+            await cmd.execute(ctx, parts)
         except Exception as e:
             self.dispatch("command_error", cmd, ctx, e)
 
@@ -72,7 +56,9 @@ class RabbitBot(RabbitClient, CommandTable):
     def add_module(self, module):
         self.modules.append(module)
         for cmd in module.commands:
+            cmd.module = module
             self.add_command(cmd)
 
         for listener in module.listeners:
+            listener.module = module
             self.add_listener(listener)

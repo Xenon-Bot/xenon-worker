@@ -7,8 +7,16 @@ class Listener:
         if name.startswith("on_"):
             name = name[3:]
 
+        self.module = None  # Gets filled by bot.add_module
         self.name = name
         self.callback = callback
+
+    async def execute(self, *args, **kwargs):
+        if self.module is None:
+            await self.callback(*args, **kwargs)
+
+        else:
+            await self.callback(self.module, *args, **kwargs)
 
 
 class Module:

@@ -53,7 +53,7 @@ class BaseCommand(ABC):
     def can_execute(self, parts):
         pass
 
-    async def execute(self, args, ctx, parts):
+    async def execute(self, ctx, parts):
         pass
 
 
@@ -117,14 +117,13 @@ class Command(BaseCommand):
     def __init__(self, callback, name=None, description=None, aliases=None, hidden=False):
         super().__init__()
 
+        self.module = None  # Gets filled by bot.add_module if this command belongs to a module
         self.checks = []
 
         cb = callback
         while isinstance(cb, Check):
             self.checks.append(cb)
             cb = cb.next
-
-        print(self.checks, cb)
 
         self.callback = cb
         self.name = name or self.callback.__name__
@@ -151,7 +150,7 @@ class Command(BaseCommand):
     def can_execute(self, parts):
         return True
 
-    async def execute(self, pre_ctx, ctx, parts):
+    async def execute(self, ctx, parts):
         default = {}
         args = []
         kwargs = {}
@@ -169,7 +168,12 @@ class Command(BaseCommand):
         for check in self.checks:
             await check.run(ctx, *args, **default, **kwargs)
 
-        res = self.callback(*pre_ctx, ctx, *args, **default, **kwargs)
+        if self.module is None:
+            res = self.callback(ctx, *args, **default, **kwargs)
+
+        else:
+            res = self.callback(self.module, ctx, *args, **default, **kwargs)
+
         if isawaitable(res):
             return await res
 
