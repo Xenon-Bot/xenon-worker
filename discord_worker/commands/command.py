@@ -2,6 +2,7 @@ from inspect import cleandoc, getdoc, Parameter, signature, ismethod, isawaitabl
 from abc import ABC
 
 from .checks import Check
+from .errors import *
 
 
 class BaseCommand(ABC):
@@ -37,16 +38,15 @@ class BaseCommand(ABC):
     def find_command(self, parts):
         for cmd in self.filter_commands(parts):
             try:
-                res = cmd.find_command(parts[1:])
+                parts, res = cmd.find_command(parts[1:])
             except ValueError:
                 continue
 
             else:
-                parts.pop(0)
-                return res
+                return parts, res
 
         if self.can_execute(parts):
-            return self
+            return parts, self
 
         raise ValueError
 
@@ -67,9 +67,10 @@ class CommandTable(BaseCommand):
 
 
 class CommandParameter:
-    def __init__(self, name, kind, converter=None):
+    def __init__(self, name, kind, default=Parameter.empty, converter=None):
         self.name = name
         self.kind = kind
+        self.default = default
 
         self.converter = converter
         if converter is bool:
@@ -84,10 +85,17 @@ class CommandParameter:
         return cls(
             p.name,
             p.kind,
+            p.default,
             p.annotation if p.annotation != Parameter.empty else None
         )
 
     def parse(self, args):
+        if len(args) == 0:
+            if self.default != Parameter.empty:
+                return self.default
+
+            raise NotEnoughArguments(self)
+
         if self.kind == Parameter.VAR_POSITIONAL:
             converter = self.converter or list
             result = converter(args)
@@ -110,7 +118,11 @@ class CommandParameter:
             return result
 
         converter = self.converter or str
-        return converter(args.pop(0))
+        arg = args.pop(0)
+        try:
+            return converter(arg)
+        except Exception as e:
+            raise ConverterFailed(self, arg, e)
 
 
 class Command(BaseCommand):

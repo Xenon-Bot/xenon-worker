@@ -21,7 +21,7 @@ class RabbitBot(RabbitClient, CommandTable):
     async def process_commands(self, msg):
         parts = msg.content[len(self.prefix):].split(" ")
         try:
-            cmd = self.find_command(parts)
+            parts, cmd = self.find_command(parts)
         except ValueError:
             return
 
