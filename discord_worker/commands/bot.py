@@ -13,7 +13,7 @@ class RabbitBot(RabbitClient, CommandTable):
         self.static_listeners = {}
         self.modules = []
 
-    def _process_listeners(self, key, data):
+    def _process_listeners(self, key, *args, **kwargs):
         s_listeners = self.static_listeners.get(key.split(".")[-1], [])
         for listener in s_listeners:
             pre_ctx = []
@@ -24,7 +24,7 @@ class RabbitBot(RabbitClient, CommandTable):
                     pre_ctx.append(module)
                     break
 
-            self.loop.create_task(listener.callback(*pre_ctx, data))
+            self.loop.create_task(listener.callback(*pre_ctx, *args, **kwargs))
 
     async def process_commands(self, msg):
         parts = msg.content[len(self.prefix):].split(" ")
@@ -42,7 +42,13 @@ class RabbitBot(RabbitClient, CommandTable):
                 break
 
         ctx = Context(self, msg)
-        await cmd.execute(pre_ctx, ctx, parts)
+        try:
+            await cmd.execute(pre_ctx, ctx, parts)
+        except Exception as e:
+            self.dispatch("command_error", cmd, ctx, e)
+
+    async def on_command_error(self, cmd, ctx, e):
+        print(type(e).__name__, e)
 
     async def on_message_create(self, data):
         msg = Message(data)

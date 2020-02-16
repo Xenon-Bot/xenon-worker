@@ -23,7 +23,7 @@ class RabbitClient:
         self.mongo = AsyncIOMotorClient(host=mongo_url)
         self.cache = self.mongo.cache
 
-    def _process_listeners(self, key, data):
+    def _process_listeners(self, key, *args, **kwargs):
         listeners = self.listeners.get(key, [])
 
         # Dispatch shard wildcards too
@@ -37,14 +37,14 @@ class RabbitClient:
                 to_remove.append(i)
 
             try:
-                result = check(data)
+                result = check(*args, **kwargs)
             except Exception as e:
                 future.set_exception(e)
                 to_remove.append(i)
 
             else:
                 if result:
-                    future.set_result(data)
+                    future.set_result((*args, *kwargs.values()))
                     to_remove.append(i)
 
         for i in sorted(to_remove, reverse=True):
@@ -52,14 +52,18 @@ class RabbitClient:
 
         self.loop.create_task(self.unsubscribe(key))
 
-    def dispatch(self, event, data):
+    def dispatch(self, event, *args, **kwargs):
+        self._process_listeners(event, *args, **kwargs)
+        self._dispatch(event, *args, **kwargs)
+
+    def _dispatch(self, event, *args, **kwargs):
         try:
             coro = getattr(self, "on_" + event)
         except AttributeError:
             pass
 
         else:
-            self.loop.create_task(coro(data))
+            self.loop.create_task(coro(*args, **kwargs))
 
     def has_listener(self, key):
         return len(self.listeners.get(key, [])) > 0
@@ -69,7 +73,7 @@ class RabbitClient:
         shard_id, event, data = payload["shard_id"], payload["event"], payload["data"]
         ev = event.lower()
         self._process_listeners("%s.%s" % (shard_id, ev), data)
-        self.dispatch(ev, data)
+        self._dispatch(ev, data)
 
     def _subscribe_dyn(self, routing_key):
         return self.channel.queue_bind(self.queue.queue, "events", routing_key)

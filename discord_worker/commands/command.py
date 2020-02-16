@@ -1,6 +1,8 @@
 from inspect import cleandoc, getdoc, Parameter, signature, ismethod, isawaitable
 from abc import ABC
 
+from .checks import Check
+
 
 class BaseCommand(ABC):
     def __init__(self, *commands):
@@ -114,14 +116,18 @@ class CommandParameter:
 class Command(BaseCommand):
     def __init__(self, callback, name=None, description=None, aliases=None, hidden=False):
         super().__init__()
+        cb = callback
+        if isinstance(cb, Check):
+            cb = callback.drill()
+
         self.callback = callback
-        self.name = name or callback.__name__
-        doc = getdoc(self.callback)
+        self.name = name or cb.__name__
+        doc = getdoc(cb)
         self.description = description or cleandoc(doc) if doc else ""
         self.aliases = aliases or []
         self.hidden = hidden
 
-        sig = signature(callback)
+        sig = signature(cb)
         self.parameters = [
             CommandParameter.from_parameter(p)
             for _, p in list(sig.parameters.items())
@@ -154,7 +160,12 @@ class Command(BaseCommand):
             else:
                 default[parameter.name] = parameter.parse(parts)
 
-        res = self.callback(*pre_ctx, ctx, *args, **default, **kwargs)
+        callback = self.callback
+        while isinstance(callback, Check):
+            await callback.run(ctx, *args, **default, **kwargs)
+            callback = callback.next  # Get the next check or the actual callback
+
+        res = callback(*pre_ctx, ctx, *args, **default, **kwargs)
         if isawaitable(res):
             return await res
 
