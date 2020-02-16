@@ -56,7 +56,7 @@ class RabbitBot(RabbitClient, CommandTable):
     def add_module(self, module):
         self.modules.append(module)
         for cmd in module.commands:
-            cmd.module = module
+            cmd.fill_module(module)
             self.add_command(cmd)
 
         for listener in module.listeners:

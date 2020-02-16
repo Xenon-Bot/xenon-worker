@@ -7,9 +7,15 @@ from .errors import *
 
 class BaseCommand(ABC):
     def __init__(self, *commands):
+        self.parent = None  # Gets filled up by BaseCommand.add_command if this command is not the top level one
         self.commands = list(commands)
 
+    @property
+    def full_name(self):
+        return ""
+
     def add_command(self, command):
+        command.parent = self
         self.commands.append(command)
 
     def remove_command(self, command):
@@ -18,10 +24,17 @@ class BaseCommand(ABC):
     def command(self, *args, **kwargs):
         def _predicate(callback):
             cmd = Command(callback, *args, **kwargs)
-            self.commands.append(cmd)
+            self.add_command(cmd)
             return cmd
 
         return _predicate
+
+    def command_tree(self):
+        result = []
+        for cmd in self.commands:
+            result.append((cmd, cmd.command_tree()))
+
+        return result
 
     def filter_commands(self, parts):
         if len(parts) == 0:
@@ -129,7 +142,7 @@ class Command(BaseCommand):
     def __init__(self, callback, name=None, description=None, aliases=None, hidden=False):
         super().__init__()
 
-        self.module = None  # Gets filled by bot.add_module if this command belongs to a module
+        self.module = None  # Gets filled by fill_module in Bot.add_module if this commands belongs to a module
         self.checks = []
 
         cb = callback
@@ -158,6 +171,45 @@ class Command(BaseCommand):
             line = line[:50] + "..."
 
         return line
+
+    @property
+    def full_name(self):
+        if self.parent is None:
+            return self.name
+
+        else:
+            return self.parent.full_name + " " + self.name
+
+    @property
+    def usage(self):
+        result = ""
+        for param in self.parameters:
+            name = param.name
+            if param.kind == Parameter.VAR_POSITIONAL:
+                name = "*" + param.name
+
+            elif param.kind == Parameter.KEYWORD_ONLY:
+                name = param.name + "..."
+
+            elif param.kind == Parameter.VAR_KEYWORD:
+                name = "**" + param.name
+
+            if param.default != Parameter.empty:
+                if param.default is None:
+                    result += " [%s]" % name
+
+                else:
+                    result += " [%s:%s]" % (name, str(param.default))
+
+            else:
+                result += " <%s>" % name
+
+        return self.full_name + result
+
+    def fill_module(self, module):
+        self.module = module
+        for cmd in self.commands:
+            cmd.fill_module(module)
 
     def can_execute(self, parts):
         return True

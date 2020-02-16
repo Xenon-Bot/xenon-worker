@@ -27,7 +27,8 @@ class Module:
     def commands(self):
         for name in dir(self):
             attr = getattr(self, name)
-            if isinstance(attr, Command):
+            # attr.parent is None checks if it is a subcommand
+            if isinstance(attr, Command) and attr.parent is None:
                 yield attr
 
     @property
