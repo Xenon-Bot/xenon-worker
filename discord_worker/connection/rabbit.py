@@ -145,7 +145,7 @@ class RabbitClient:
         return Role(role)
 
     async def get_member(self, guild_id, member_id):
-        member = await self.cache.members.find_one({"guild_id": guild_id, "id": member_id})
+        member = await self.cache.members.find_one({"guild_id": guild_id, "user.id": member_id})
         if member is None:
             return None
 
