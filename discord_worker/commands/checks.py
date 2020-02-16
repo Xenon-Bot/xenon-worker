@@ -8,15 +8,6 @@ class Check:
         self.next = callback
         self.check = check
 
-    def drill(self):
-        if isinstance(self.next, Check):
-            return self.next.drill()
-
-        return self.next
-
-    def __getattr__(self, item):
-        return getattr(self.next, item)
-
     def run(self, ctx, *args, **kwargs):
         return self.check(ctx, *args, **kwargs)
 
