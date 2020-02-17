@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass()
 class Format:
-    color: int = 0x36393E
+    color: int = None
     title: str = None
     icon: str = None
 
