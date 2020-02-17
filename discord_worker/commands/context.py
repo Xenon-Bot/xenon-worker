@@ -49,6 +49,9 @@ class Context:
     def send(self, *args, **kwargs):
         return self.client.http.send_message(self.msg.channel_id, *args, **kwargs)
 
+    def edit(self, message_id, *args, **kwargs):
+        return self.client.http.edit_message(self.channel_id, message_id, *args, **kwargs)
+
     def invoke(self, cmd):
         return self.client.invoke(self, cmd)
 

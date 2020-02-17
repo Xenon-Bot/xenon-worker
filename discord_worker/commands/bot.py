@@ -16,8 +16,8 @@ class RabbitBot(RabbitClient, CommandTable):
         self.modules = []
         self.f = Formatter()
 
-    async def f_send(self, channel_id, *args, **kwargs):
-        await self.http.send_message(channel_id, **self.f.format(*args, **kwargs))
+    def f_send(self, channel_id, *args, **kwargs):
+        return self.http.send_message(channel_id, **self.f.format(*args, **kwargs))
 
     def _process_listeners(self, key, *args, **kwargs):
         s_listeners = self.static_listeners.get(key.split(".")[-1], [])
