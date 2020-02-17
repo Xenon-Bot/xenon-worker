@@ -190,10 +190,10 @@ class Guild(Entity):
         self.default_message_notifications = DefaultMessageNotifications(data["default_message_notifications"])
         self.explicit_content_filter = ExplicitContentFilter(data["explicit_content_filter"])
         self.mfa_level = MFALevel(data["mfa_level"])
-        self.roles = [Role(d) for d in data["roles"]]
+        self.roles = [Role(d) for d in data.get("roles", [])]
         # self.emojis =
         self.members = [Member(d) for d in data.get("members", [])]
-        self.channels = [Channel(d) for d in data.get("channel", [])]
+        self.channels = [Channel(d) for d in data.get("channels", [])]
 
     @property
     def icon_animated(self):
