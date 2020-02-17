@@ -4,3 +4,4 @@ from .context import Context
 from .module import Module, Listener
 from .checks import *
 from .errors import *
+from .formatter import Formatter

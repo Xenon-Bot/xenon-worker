@@ -3,6 +3,7 @@ from ..connection.entities import Message
 from .command import CommandTable
 from .context import Context
 from .module import Listener
+from .formatter import Formatter
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -12,6 +13,10 @@ class RabbitBot(RabbitClient, CommandTable):
         self.prefix = prefix
         self.static_listeners = {}
         self.modules = []
+        self.f = Formatter()
+
+    async def f_send(self, channel_id, *args, **kwargs):
+        await self.http.send_message(channel_id, **self.f.format(*args, **kwargs))
 
     def _process_listeners(self, key, *args, **kwargs):
         s_listeners = self.static_listeners.get(key.split(".")[-1], [])

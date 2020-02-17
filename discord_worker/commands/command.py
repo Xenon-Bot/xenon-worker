@@ -166,7 +166,11 @@ class Command(BaseCommand):
 
     @property
     def brief(self):
-        line = self.description.splitlines()[0]
+        lines = self.description.splitlines()
+        if len(lines) == 0:
+            return ""
+
+        line = lines[0]
         if len(line) > 50:
             line = line[:50] + "..."
 
@@ -178,7 +182,7 @@ class Command(BaseCommand):
             return self.name
 
         else:
-            return self.parent.full_name + " " + self.name
+            return (self.parent.full_name + " " + self.name).strip()
 
     @property
     def usage(self):
@@ -199,7 +203,7 @@ class Command(BaseCommand):
                     result += " [%s]" % name
 
                 else:
-                    result += " [%s:%s]" % (name, str(param.default))
+                    result += " [%s=%s]" % (name, str(param.default))
 
             else:
                 result += " <%s>" % name

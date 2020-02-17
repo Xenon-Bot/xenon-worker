@@ -9,6 +9,10 @@ class Context:
     def bot(self):
         return self.client
 
+    @property
+    def f(self):
+        return self.client.f
+
     async def get_channel(self, cache=True):
         if cache and "channel" in self._cache.keys():
             return self._cache.get("channel")
@@ -38,6 +42,9 @@ class Context:
             return self._cache.get("roles")
 
         return await self.client.get_roles(self.msg.guild_id)
+
+    def f_send(self, *args, **kwargs):
+        return self.bot.f_send(self.msg.channel_id, *args, **kwargs)
 
     def send(self, *args, **kwargs):
         return self.client.http.send_message(self.msg.channel_id, *args, **kwargs)
