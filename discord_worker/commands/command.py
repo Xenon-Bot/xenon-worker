@@ -61,7 +61,7 @@ class BaseCommand(ABC):
         if self.can_execute(parts):
             return parts, self
 
-        raise ValueError
+        raise CommandNotFound()
 
     def can_execute(self, parts):
         pass

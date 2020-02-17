@@ -2,6 +2,10 @@ class CommandError(Exception):
     pass
 
 
+class CommandNotFound(CommandError):
+    pass
+
+
 class NotEnoughArguments(CommandError):
     def __init__(self, parameter):
         self.parameter = parameter

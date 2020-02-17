@@ -49,5 +49,8 @@ class Context:
     def send(self, *args, **kwargs):
         return self.client.http.send_message(self.msg.channel_id, *args, **kwargs)
 
+    def invoke(self, cmd):
+        return self.client.invoke(self, cmd)
+
     def __getattr__(self, item):
         return getattr(self.msg, item)

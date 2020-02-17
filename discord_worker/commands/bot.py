@@ -4,6 +4,7 @@ from .command import CommandTable
 from .context import Context
 from .module import Listener
 from .formatter import Formatter
+from .errors import *
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -27,7 +28,7 @@ class RabbitBot(RabbitClient, CommandTable):
         parts = msg.content[len(self.prefix):].split(" ")
         try:
             parts, cmd = self.find_command(parts)
-        except ValueError:
+        except CommandNotFound:
             return
 
         ctx = Context(self, msg)
@@ -35,6 +36,15 @@ class RabbitBot(RabbitClient, CommandTable):
             await cmd.execute(ctx, parts)
         except Exception as e:
             self.dispatch("command_error", cmd, ctx, e)
+
+    async def invoke(self, ctx, cmd):
+        parts = cmd.split(" ")
+        try:
+            parts, cmd = self.find_command(parts)
+        except CommandNotFound:
+            return
+
+        await cmd.execute(ctx, parts)
 
     async def on_command_error(self, cmd, ctx, e):
         print(type(e).__name__, e)
