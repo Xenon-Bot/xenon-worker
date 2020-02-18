@@ -3,8 +3,10 @@ from ..connection.entities import Message
 from .command import CommandTable
 from .context import Context
 from .module import Listener
-from .formatter import Formatter
+from .formatter import Formatter, FormatRaise
+import traceback
 from .errors import *
+import sys
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -46,10 +48,12 @@ class RabbitBot(RabbitClient, CommandTable):
 
         await cmd.execute(ctx, parts)
 
-    async def on_command_error(self, cmd, ctx, e):
-        print(type(e).__name__, e)
+    async def on_command_error(self, _, cmd, ctx, e):
+        if isinstance(e, FormatRaise):
+            await ctx.f_send(*e.args, **e.kwargs, f=e.f)
 
-    async def on_message_create(self, data):
+        else:
+            traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
         msg = Message(data)
         await self.process_commands(msg)
 

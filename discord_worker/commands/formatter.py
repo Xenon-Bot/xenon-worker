@@ -1,11 +1,23 @@
 from dataclasses import dataclass
 
 
+class FormatRaise(Exception):
+    def __init__(self, f, *args, **kwargs):
+        self.f = f
+        self.args = args
+        self.kwargs = kwargs
+
+
 @dataclass()
 class Format:
     color: int = None
     title: str = None
     icon: str = None
+
+    def __call__(self, *args, **kwargs):
+        # This makes it possible to use an existing format object with a raise statement to directly yield make
+        # to the command error handler(s) and let them format the message
+        return FormatRaise(self, *args, **kwargs)
 
 
 class Formatter:
