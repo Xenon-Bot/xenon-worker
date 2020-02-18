@@ -3,6 +3,7 @@ from abc import ABC
 
 from .checks import Check
 from .errors import *
+from .converters import Converter
 
 
 class BaseCommand(ABC):
@@ -111,31 +112,34 @@ class CommandParameter:
 
         if self.kind == Parameter.VAR_POSITIONAL:
             converter = self.converter or list
-            result = converter(args)
+            arg = args
             args.clear()
-            return result
 
-        if self.kind == Parameter.KEYWORD_ONLY:
+        elif self.kind == Parameter.KEYWORD_ONLY:
             converter = self.converter or str
-            result = converter(" ".join(args))
+            arg = " ".join(args)
             args.clear()
-            return result
 
-        if self.kind == Parameter.VAR_KEYWORD:
+        elif self.kind == Parameter.VAR_KEYWORD:
             converter = self.converter or dict
-            result = converter({
+            arg = {
                 a: b
                 for a, b in map(lambda ab: ab.split("="), args)
-            })
+            }
             args.clear()
-            return result
 
-        converter = self.converter or str
-        arg = args.pop(0)
+        else:
+            converter = self.converter or str
+            arg = args.pop(0)
+
         try:
-            return converter(arg)
+            if issubclass(converter, Converter):
+                return converter(self, arg)
+
+            else:
+                return converter(arg)
         except Exception as e:
-            raise ConverterFailed(self, arg, e)
+            raise ConverterFailed(self, arg, str(e))
 
 
 class Command(BaseCommand):

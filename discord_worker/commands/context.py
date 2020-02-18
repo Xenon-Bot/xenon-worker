@@ -26,6 +26,9 @@ class Context:
 
         return await self.client.get_guild(self.msg.guild_id)
 
+    def get_guild_fields(self, *fields):
+        return self.client.get_guild_fields(self.msg.guild_id, *fields)
+
     async def get_bot_member(self, cache=True):
         if cache and "bot_member" in self._cache.keys():
             return self._cache.get("bot_member")

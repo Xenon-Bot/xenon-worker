@@ -25,8 +25,15 @@ class HttpMixin:
     async def clear_reactions(self, message):
         return await self.http.clear_reactions(message.channel_id, message.id)
 
+    async def fetch_user(self, user_id):
+        result = await self.http.get_user(user_id)
+        return User(result)
+
 
 class CacheMixin:
+    async def get_guild_fields(self, guild_id, *fields):
+        return await self.cache.guilds.find_one({"_id": guild_id}, projection=fields)
+
     async def get_guild(self, guild_id):
         guild = await self.cache.guilds.find_one({"_id": guild_id})
         channels = self.cache.channels.find({"guild_id": guild_id})

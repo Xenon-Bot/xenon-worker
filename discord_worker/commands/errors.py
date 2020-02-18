@@ -36,5 +36,5 @@ class NotOwner(CheckFailed):
     pass
 
 
-class NotStaff(CheckFailed):
+class NotBotOwner(CheckFailed):
     pass
