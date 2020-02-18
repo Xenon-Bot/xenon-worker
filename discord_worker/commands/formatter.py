@@ -13,6 +13,7 @@ class Format:
     color: int = None
     title: str = None
     icon: str = None
+    extra: str = ""
 
     def __call__(self, *args, **kwargs):
         # This makes it possible to use an existing format object with a raise statement to directly yield make
@@ -40,7 +41,8 @@ class Formatter:
     ERROR = Format(
         title="Error",
         color=0xc64935,
-        icon="https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678069-sign-error-512.png"
+        icon="https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678069-sign-error-512.png",
+        extra="\n\n[Support](https://discord.club/discord)"
     )
     WORKING = Format(
         title="Please Wait ...",
@@ -57,7 +59,7 @@ class Formatter:
     def format(self, content="", *, embed=None, f: Format = DEFAULT, **kwargs):
         formatted = {
             "color": f.color,
-            "description": content,
+            "description": content + f.extra,
             "author": {
                 "name": f.title,
                 "icon_url": f.icon

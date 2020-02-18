@@ -54,6 +54,43 @@ class RabbitBot(RabbitClient, CommandTable):
         if isinstance(e, FormatRaise):
             await ctx.f_send(*e.args, **e.kwargs, f=e.f)
 
+        elif isinstance(e, CommandNotFound):
+            pass
+
+        elif isinstance(e, NotEnoughArguments):
+            await ctx.f_send(
+                f"The command `{cmd.full_name}` is **missing the `{e.parameter.name}` argument**.\n"
+                f"Use `{self.prefix}help {cmd.full_name}` to get more information.",
+                f=self.f.ERROR
+            )
+
+        elif isinstance(e, ConverterFailed):
+            pass
+
+        elif isinstance(e, MissingPermissions):
+            await ctx.f_send(
+                f"You are **missing** the following **permissions**: `{', '.join(e.missing)}`.",
+                f=self.f.ERROR
+            )
+
+        elif isinstance(e, BotMissingPermissions):
+            await ctx.f_send(
+                f"The bot is **missing** the following **permissions**: `{', '.join(e.missing)}`.",
+                f=self.f.ERROR
+            )
+
+        elif isinstance(e, NotOwner):
+            await ctx.f_send(
+                "This command can **only** be used by the **server owner**.",
+                f=self.f.ERROR
+            )
+
+        elif isinstance(e, NotBotOwner):
+            await ctx.f_send(
+                "This command can **only** be used by the **bot owner**.",
+                f=self.f.ERROR
+            )
+
         else:
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
 
