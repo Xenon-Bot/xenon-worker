@@ -5,11 +5,22 @@ import traceback
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from .httpd import HTTPClient
-from .entities import Guild, Channel, Role, Member, User
+from .entities import User
+from .mixins import HttpMixin, CacheMixin
 
 
-class RabbitClient:
+class Event:
+    def __init__(self, name, shard_id="*"):
+        self.shard_id = shard_id
+        self.name = name
+
+    def __str__(self):
+        return f"{self.shard_id}.{self.name}"
+
+
+class RabbitClient(CacheMixin, HttpMixin):
     def __init__(self, rabbit_url, mongo_url, loop=None):
+        super().__init__()
         self.url = rabbit_url
         self.user = None
         self.loop = loop or asyncio.get_event_loop()
@@ -23,14 +34,12 @@ class RabbitClient:
         self.mongo = AsyncIOMotorClient(host=mongo_url)
         self.cache = self.mongo.cache
 
-    def _process_listeners(self, key, *args, **kwargs):
-        listeners = self.listeners.get(key, [])
+    def _process_listeners(self, event, *args, **kwargs):
+        if event.shard_id != "*":
+            # Process wildcard too
+            self._process_listeners(Event(event.name), *args, **kwargs)
 
-        # Dispatch shard wildcards too
-        parts = key.split(".")
-        if len(parts) == 2:
-            listeners.extend(self.listeners.get("*." + parts[1], []))
-
+        listeners = self.listeners.get(str(event), [])
         to_remove = []
         for i, (future, check) in enumerate(listeners):
             if future.cancelled():
@@ -50,20 +59,25 @@ class RabbitClient:
         for i in sorted(to_remove, reverse=True):
             del listeners[i]
 
-        self.loop.create_task(self.unsubscribe(key))
+        res = self._unsubscribe_dyn(str(event))
+        if res:
+            self.loop.create_task(res)
 
     def dispatch(self, event, *args, **kwargs):
+        if not isinstance(event, Event):
+            event = Event(event)
+
         self._process_listeners(event, *args, **kwargs)
         self._dispatch(event, *args, **kwargs)
 
     def _dispatch(self, event, *args, **kwargs):
         try:
-            coro = getattr(self, "on_" + event)
+            coro = getattr(self, "on_" + event.name)
         except AttributeError:
             pass
 
         else:
-            self.loop.create_task(coro(*args, **kwargs))
+            self.loop.create_task(coro(event.shard_id, *args, **kwargs))
 
     def has_listener(self, key):
         return len(self.listeners.get(key, [])) > 0
@@ -72,8 +86,8 @@ class RabbitClient:
         payload = json.loads(msg.body)
         shard_id, event, data = payload["shard_id"], payload["event"], payload["data"]
         ev = event.lower()
-        self._process_listeners("%s.%s" % (shard_id, ev), data)
-        self._dispatch(ev, data)
+        self._process_listeners(Event(ev, shard_id), data)
+        self._dispatch(Event(ev, shard_id), data)
 
     def _subscribe_dyn(self, routing_key):
         return self.channel.queue_bind(self.queue.queue, "events", routing_key)
@@ -99,7 +113,7 @@ class RabbitClient:
 
         return self.channel.queue_unbind(self.queue.queue, "events", routing_key)
 
-    async def wait_for(self, shard_id, event, check=None, timeout=None):
+    async def wait_for(self, event, shard_id="*", check=None, timeout=None):
         future = self.loop.create_future()
         if check is None:
             def _check(*args):
@@ -107,58 +121,15 @@ class RabbitClient:
 
             check = _check
 
-        key = "%s.%s" % (shard_id or "*", event.lower())
+        key = "%s.%s" % (shard_id, event.lower())
         if key not in self.listeners.keys():
             self.listeners[key] = []
 
         listeners = self.listeners[key]
 
         listeners.append((future, check))
-        await self.subscribe(key)
+        await self._subscribe_dyn(key)
         return await asyncio.wait_for(future, timeout)
-
-    async def get_guild(self, guild_id):
-        guild = await self.cache.guilds.find_one({"_id": guild_id})
-        channels = self.cache.channels.find({"guild_id": guild_id})
-        roles = self.cache.roles.find({"guild_id": guild_id})
-        data = {
-            **guild,
-            "channels": [c async for c in channels],
-            "roles": [r async for r in roles]
-        }
-        return Guild(data)
-
-    async def get_channels(self, guild_id, **filter_):
-        async for channel in self.cache.channels.find({"guild_id": guild_id, **filter_}):
-            yield Channel(channel)
-
-    async def get_channel(self, channel_id):
-        channel = await self.cache.channels.find_one({"_id": channel_id})
-        if channel is None:
-            return None
-
-        return Channel(channel) if channel is not None else None
-
-    async def get_roles(self, guild_id, **filter_):
-        async for role in self.cache.roles.find({"guild_id": guild_id, **filter_}):
-            yield Role(role)
-
-    async def get_role(self, role_id):
-        role = await self.cache.roles.find_one({"_id": role_id})
-        if role is None:
-            return None
-
-        return Role(role)
-
-    async def get_member(self, guild_id, member_id):
-        member = await self.cache.members.find_one({"guild_id": guild_id, "user.id": member_id})
-        if member is None:
-            return None
-
-        return Member(member)
-
-    def get_bot_member(self, guild_id):
-        return self.get_member(guild_id, self.user.id)
 
     async def start(self, command_queue, subscriptions=None):
         try:

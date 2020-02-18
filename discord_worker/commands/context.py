@@ -1,6 +1,7 @@
 class Context:
-    def __init__(self, client, msg):
+    def __init__(self, client, shard_id, msg):
         self.client = client
+        self.shard_id = shard_id
         self.msg = msg
 
         self._cache = {}
@@ -46,11 +47,11 @@ class Context:
     def f_send(self, *args, **kwargs):
         return self.bot.f_send(self.msg.channel_id, *args, **kwargs)
 
-    def send(self, *args, **kwargs):
-        return self.client.http.send_message(self.msg.channel_id, *args, **kwargs)
+    def send_message(self, *args, **kwargs):
+        return self.client.send_message(self.msg.channel_id, *args, **kwargs)
 
-    def edit(self, message_id, *args, **kwargs):
-        return self.client.http.edit_message(self.channel_id, message_id, *args, **kwargs)
+    def send(self, *args, **kwargs):
+        return self.send_message(*args, **kwargs)
 
     def invoke(self, cmd):
         return self.client.invoke(self, cmd)

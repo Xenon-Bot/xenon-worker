@@ -18,22 +18,24 @@ class RabbitBot(RabbitClient, CommandTable):
         self.modules = []
         self.f = Formatter()
 
-    def f_send(self, channel_id, *args, **kwargs):
-        return self.http.send_message(channel_id, **self.f.format(*args, **kwargs))
+    def f_send(self, channel, *args, **kwargs):
+        return self.send_message(channel, **self.f.format(*args, **kwargs))
 
-    def _process_listeners(self, key, *args, **kwargs):
-        s_listeners = self.static_listeners.get(key.split(".")[-1], [])
+    def _process_listeners(self, event, *args, **kwargs):
+        s_listeners = self.static_listeners.get(event.name, [])
         for listener in s_listeners:
-            self.loop.create_task(listener.execute(*args, **kwargs))
+            self.loop.create_task(listener.execute(event.shard_id, *args, **kwargs))
 
-    async def process_commands(self, msg):
+        super()._process_listeners(event, *args, **kwargs)
+
+    async def process_commands(self, shard_id, msg):
         parts = msg.content[len(self.prefix):].split(" ")
         try:
             parts, cmd = self.find_command(parts)
         except CommandNotFound:
             return
 
-        ctx = Context(self, msg)
+        ctx = Context(self, shard_id, msg)
         try:
             await cmd.execute(ctx, parts)
         except Exception as e:
@@ -54,8 +56,10 @@ class RabbitBot(RabbitClient, CommandTable):
 
         else:
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+
+    async def on_message_create(self, shard_id, data):
         msg = Message(data)
-        await self.process_commands(msg)
+        await self.process_commands(shard_id, msg)
 
     def add_listener(self, listener):
         if listener.name not in self.static_listeners.keys():

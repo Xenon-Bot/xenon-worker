@@ -22,6 +22,7 @@ class Listener:
 class Module:
     def __init__(self, client):
         self.client = client
+        self.bot = client
 
     @property
     def commands(self):
