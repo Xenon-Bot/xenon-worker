@@ -155,3 +155,7 @@ class RabbitClient(CacheMixin, HttpMixin):
     def run(self, *args, **kwargs):
         self.loop.create_task(self.start(*args, **kwargs))
         self.loop.run_forever()
+
+    async def close(self):
+        await self.channel.close()
+        await self.connection.close()

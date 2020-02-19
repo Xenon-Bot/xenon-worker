@@ -7,6 +7,7 @@ from .formatter import Formatter, FormatRaise
 import traceback
 from .errors import *
 import sys
+import aiojobs
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -17,6 +18,7 @@ class RabbitBot(RabbitClient, CommandTable):
         self.static_listeners = {}
         self.modules = []
         self.f = Formatter()
+        self.scheduler = None
 
     def f_send(self, channel, *args, **kwargs):
         return self.send_message(channel, **self.f.format(*args, **kwargs))
@@ -122,3 +124,14 @@ class RabbitBot(RabbitClient, CommandTable):
         for listener in module.listeners:
             listener.module = module
             self.add_listener(listener)
+
+    async def schedule(self, coro):
+        return await self.scheduler.spawn(coro)
+
+    async def start(self, *args, **kwargs):
+        self.scheduler = await aiojobs.create_scheduler()
+        await super().start(*args, **kwargs)
+
+    async def close(self):
+        await self.scheduler.close()
+        await super().close()
