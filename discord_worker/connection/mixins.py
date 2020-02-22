@@ -22,12 +22,30 @@ class HttpMixin:
     async def remove_reaction(self, message, *args, **kwargs):
         return await self.http.remove_reaction(message.channel_id, message.id, *args, **kwargs)
 
-    async def clear_reactions(self, message):
-        return await self.http.clear_reactions(message.channel_id, message.id)
+    async def clear_reactions(self, message, *args, **kwargs):
+        return await self.http.clear_reactions(message.channel_id, message.id, *args, **kwargs)
 
     async def fetch_user(self, user_id):
         result = await self.http.get_user(user_id)
         return User(result)
+
+    async def create_channel(self, guild, *args, **kwargs):
+        result = await self.http.create_channel(guild.id, *args, **kwargs)
+        return Channel(result)
+
+    async def delete_channel(self, channel, *args, **kwargs):
+        return await self.http.delete_channel(channel.id, *args, **kwargs)
+
+    async def create_role(self, guild, *args, **kwargs):
+        result = await self.http.create_role(guild.id, *args, **kwargs)
+        return Role(result)
+
+    async def edit_role(self, role, *args, **kwargs):
+        result = await self.http.edit_role(role.guild_id, role.id, *args, **kwargs)
+        return Role(result)
+
+    async def delete_role(self, role, *args, **kwargs):
+        return await self.http.delete_role(role.guild_id, role.id, *args, **kwargs)
 
 
 class CacheMixin:
