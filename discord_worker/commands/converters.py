@@ -1,4 +1,5 @@
 from .errors import *
+import re
 
 
 class Converter:
@@ -16,11 +17,35 @@ class Converter:
 class UserConverter(Converter):
     async def _convert(self, ctx):
         try:
-            user = await ctx.bot.fetch_user(self.arg)
+            mention = re.match(r"^<@!?(?P<id>\d+)>$", self.arg)
+            if mention:
+                user_id = mention.group("id")
+
+            else:
+                user_id = self.arg
+
+            user = await ctx.bot.fetch_user(user_id)
         except Exception:
             raise ConverterFailed(self.parameter, self.arg, "User not found")
 
         return user
+
+
+class MemberConverter(Converter):
+    async def _convert(self, ctx):
+        try:
+            mention = re.match(r"^<@!?(?P<id>\d+)>$", self.arg)
+            if mention:
+                member_id = mention.group("id")
+
+            else:
+                member_id = self.arg
+
+            member = await ctx.bot.fetch_member(ctx.guild_id, member_id)
+        except Exception:
+            raise ConverterFailed(self.parameter, self.arg, "Member not found")
+
+        return member
 
 
 class GuildConverter(Converter):

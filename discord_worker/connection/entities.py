@@ -241,6 +241,9 @@ class Message(Entity):
         # self.mention_roles
         # self.mention_everyone
         self.author = Member({"user": data["author"], **data.get("member", {})})
-        self.member = self.author
         self.edited_timestamp = parse_time(data["edited_timestamp"])
         # self.attachments
+
+    @property
+    def member(self):
+        return self.author

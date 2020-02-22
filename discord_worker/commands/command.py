@@ -111,8 +111,8 @@ class CommandParameter:
             raise NotEnoughArguments(self)
 
         if self.kind == Parameter.VAR_POSITIONAL:
-            converter = self.converter or list
-            arg = args
+            converter = self.converter or tuple
+            arg = tuple(args)
             args.clear()
 
         elif self.kind == Parameter.KEYWORD_ONLY:
