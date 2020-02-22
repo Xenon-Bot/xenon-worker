@@ -63,6 +63,9 @@ class Role(Entity):
     def _preprocess(self, data):
         self.permissions = Permissions(data["permissions"])
 
+    def is_default(self):
+        return self.position == 0
+
 
 class Channel(Entity):
     __slots__ = ("type", "guild_id", "position", "permission_overwrites", "name", "topic", "nsfw", "last_message_id",
@@ -219,6 +222,15 @@ class Guild(Entity):
     @property
     def splash_url(self):
         return None
+
+    @property
+    def default_role(self):
+        fit = [r for r in self.roles if r.is_default()]
+        if len(fit) > 0:
+            return fit[0]
+
+        else:
+            return None
 
 
 class Message(Entity):
