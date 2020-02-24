@@ -223,7 +223,7 @@ class Command(BaseCommand):
         return True
 
     async def execute(self, ctx, parts):
-        default = {}
+        default = []
         args = []
         kwargs = {}
 
@@ -234,17 +234,20 @@ class Command(BaseCommand):
             elif parameter.kind == Parameter.VAR_KEYWORD:
                 kwargs.update(parameter.parse(parts))
 
+            elif parameter.kind == Parameter.KEYWORD_ONLY:
+                kwargs[parameter.name] = parameter.parse(parts)
+
             else:
-                default[parameter.name] = parameter.parse(parts)
+                default.append(parameter.parse(parts))
 
         for check in self.checks:
-            await check.run(ctx, *args, **default, **kwargs)
+            await check.run(ctx, *default, *args, **kwargs)
 
         if self.module is None:
-            res = self.callback(ctx, *args, **default, **kwargs)
+            res = self.callback(ctx, *default, *args, **kwargs)
 
         else:
-            res = self.callback(self.module, ctx, *args, **default, **kwargs)
+            res = self.callback(self.module, ctx, *default, *args, **kwargs)
 
         if isawaitable(res):
             return await res
