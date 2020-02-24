@@ -80,3 +80,7 @@ class ListMenu:
                 return
 
             await self.update()
+
+
+def invite_url(client_id, perms):
+    return f"https://discordapp.com/api/oauth2/authorize?client_id={client_id}&permissions={perms.value}&scope=bot"

@@ -29,8 +29,8 @@ class HttpMixin:
         result = await self.http.get_user(user_id)
         return User(result)
 
-    async def fetch_member(self, guild_id, member_id):
-        result = await self.http.get_member(guild_id, member_id)
+    async def fetch_member(self, guild, member_id):
+        result = await self.http.get_member(guild.id, member_id)
         return Member(result)
 
     async def create_channel(self, guild, *args, **kwargs):
@@ -50,6 +50,12 @@ class HttpMixin:
 
     async def delete_role(self, role, *args, **kwargs):
         return await self.http.delete_role(role.guild_id, role.id, *args, **kwargs)
+
+    async def leave_guild(self, guild):
+        return await self.http.leave_guild(guild.id)
+
+    async def app_info(self):
+        return await self.http.application_info()
 
 
 class CacheMixin:

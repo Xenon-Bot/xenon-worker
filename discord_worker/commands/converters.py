@@ -1,4 +1,5 @@
 from .errors import *
+from ..connection.entities import Snowflake
 import re
 
 
@@ -41,7 +42,7 @@ class MemberConverter(Converter):
             else:
                 member_id = self.arg
 
-            member = await ctx.bot.fetch_member(ctx.guild_id, member_id)
+            member = await ctx.bot.fetch_member(Snowflake(ctx.guild_id), member_id)
         except Exception:
             raise ConverterFailed(self.parameter, self.arg, "Member not found")
 
