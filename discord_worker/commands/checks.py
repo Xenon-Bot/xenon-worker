@@ -1,4 +1,5 @@
 from .errors import *
+from ..connection.entities import ChannelType
 
 
 class Check:
@@ -86,3 +87,32 @@ def is_bot_owner(callback):
 
     return Check(callback, check)
 
+
+def guild_only(callback):
+    async def check(ctx, *args, **kwargs):
+        channel = await ctx.client.get_channel(ctx.channel_id)
+        if channel is None:
+            # Probably a DM channel
+            raise NotAGuildChannel()
+
+        if channel.type != ChannelType.GUILD_TEXT:
+            raise NotAGuildChannel()
+
+        return True
+
+    return Check(callback, check)
+
+
+def dm_only(callback):
+    async def check(ctx, *args, **kwargs):
+        channel = await ctx.client.get_channel(ctx.channel_id)
+        if channel is None:
+            # Probably a DM channel
+            return True
+
+        if channel.type != ChannelType.DM:
+            raise NotADMChannel()
+
+        return True
+
+    return Check(callback, check)

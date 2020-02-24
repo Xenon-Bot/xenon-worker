@@ -38,3 +38,11 @@ class NotOwner(CheckFailed):
 
 class NotBotOwner(CheckFailed):
     pass
+
+
+class NotAGuildChannel(CheckFailed):
+    pass
+
+
+class NotADMChannel(CheckFailed):
+    pass

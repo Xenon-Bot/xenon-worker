@@ -91,6 +91,18 @@ class RabbitBot(RabbitClient, CommandTable):
                 f=self.f.ERROR
             )
 
+        elif isinstance(e, NotAGuildChannel):
+            await ctx.f_send(
+                "This command can **only** be used **inside a guild**.",
+                f=self.f.ERROR
+            )
+
+        elif isinstance(e, NotADMChannel):
+            await ctx.f_send(
+                "This command can **only** be used in **direct messages**.",
+                f=self.f.ERROR
+            )
+
         else:
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
 
