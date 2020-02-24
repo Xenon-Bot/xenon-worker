@@ -4,6 +4,8 @@ class Context:
         self.shard_id = shard_id
         self.msg = msg
 
+        self.last_cmd = None  # Filled by cmd.execute
+
         self._cache = {}
 
     @property

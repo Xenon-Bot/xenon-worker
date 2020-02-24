@@ -223,6 +223,7 @@ class Command(BaseCommand):
         return True
 
     async def execute(self, ctx, parts):
+        ctx.last_cmd = self
         default = []
         args = []
         kwargs = {}

@@ -103,6 +103,13 @@ class RabbitBot(RabbitClient, CommandTable):
                 f=self.f.ERROR
             )
 
+        elif isinstance(e, CommandOnCooldown):
+            await ctx.f_send(
+                f"This **command** is currently on **cooldown**.\n"
+                f"You have to **wait `{e.remaining}` seconds** until you can use it again.",
+                f=self.f.ERROR
+            )
+
         else:
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
 

@@ -3,6 +3,7 @@ import json
 import asyncio
 import traceback
 from motor.motor_asyncio import AsyncIOMotorClient
+import aioredis
 
 from .httpd import HTTPClient
 from .entities import User
@@ -19,7 +20,7 @@ class Event:
 
 
 class RabbitClient(CacheMixin, HttpMixin):
-    def __init__(self, rabbit_url, mongo_url, loop=None):
+    def __init__(self, rabbit_url, mongo_url, redis_url, loop=None):
         super().__init__()
         self.url = rabbit_url
         self.user = None
@@ -27,6 +28,8 @@ class RabbitClient(CacheMixin, HttpMixin):
         self.connection = None
         self.channel = None
         self.queue = None
+        self.redis_url = redis_url
+        self.redis = None
         self.listeners = {}
         self.static_subscriptions = set()
 
@@ -135,6 +138,8 @@ class RabbitClient(CacheMixin, HttpMixin):
         try:
             user_data = await self.http.static_login()
             self.user = User(user_data)
+
+            self.redis = await aioredis.create_redis_pool(self.redis_url)
 
             self.connection = await aiormq.connect(self.url)
             self.channel = await self.connection.channel()

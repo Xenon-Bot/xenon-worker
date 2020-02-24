@@ -46,3 +46,12 @@ class NotAGuildChannel(CheckFailed):
 
 class NotADMChannel(CheckFailed):
     pass
+
+
+class CommandOnCooldown(CheckFailed):
+    def __init__(self, rate, per, bucket, remaining):
+        self.per = per
+        self.rate = rate
+        self.bucket = bucket
+        self.remaining = remaining
+

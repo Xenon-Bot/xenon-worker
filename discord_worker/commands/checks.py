@@ -1,5 +1,6 @@
 from .errors import *
 from ..connection.entities import ChannelType
+from enum import Enum
 
 
 class Check:
@@ -116,3 +117,38 @@ def dm_only(callback):
         return True
 
     return Check(callback, check)
+
+
+class CooldownType(Enum):
+    GLOBAL = 0
+    GUILD = 1
+    CHANNEL = 2
+    AUTHOR = 3
+
+
+def cooldown(rate: int, per: float, bucket=CooldownType.AUTHOR):
+    def predicate(callback):
+        async def check(ctx, *args, **kwargs):
+            if bucket == CooldownType.GUILD:
+                key = ctx.guild_id
+
+            elif bucket == CooldownType.CHANNEL:
+                key = ctx.channel_id
+
+            elif bucket == CooldownType.AUTHOR:
+                key = ctx.author.id
+
+            else:
+                key = "*"
+
+            full_key = "cmd_" + ctx.last_cmd.full_name.replace(" ", "") + "_" + key
+            current = int(await ctx.bot.redis.get(full_key) or 0)
+            if current >= rate:
+                remaining = await ctx.bot.redis.ttl(full_key)
+                raise CommandOnCooldown(rate, per, bucket, remaining)
+
+            await ctx.bot.redis.setex(full_key, per, current + 1)
+
+        return Check(callback, check)
+
+    return predicate
