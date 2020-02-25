@@ -85,6 +85,8 @@ class CommandParameter:
         self.name = name
         self.kind = kind
         self.default = default
+        if self.kind == Parameter.KEYWORD_ONLY and default==Parameter.empty:
+            self.default = ""
 
         self.converter = converter
         if converter is bool:
