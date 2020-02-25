@@ -1,5 +1,5 @@
 import aiormq
-import json
+import msgpack
 import asyncio
 import traceback
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -86,7 +86,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         return len(self.listeners.get(key, [])) > 0
 
     async def _message_received(self, msg):
-        payload = json.loads(msg.body)
+        payload = msgpack.unpackb(msg.body)
         shard_id, event, data = payload["shard_id"], payload["event"], payload["data"]
         ev = event.lower()
         self._process_listeners(Event(ev, shard_id), data)
