@@ -151,6 +151,7 @@ class RabbitBot(RabbitClient, CommandTable):
 
     async def start(self, *args, **kwargs):
         await super().start(*args, **kwargs)
+        self.dispatch("load")
 
     async def close(self):
         await super().close()
