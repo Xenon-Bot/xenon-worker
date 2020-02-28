@@ -85,8 +85,12 @@ class CommandParameter:
         self.name = name
         self.kind = kind
         self.default = default
-        if self.kind == Parameter.KEYWORD_ONLY and default==Parameter.empty:
-            self.default = ""
+        if self.default == Parameter.empty:
+            if self.kind == Parameter.KEYWORD_ONLY:
+                self.default = ""
+
+            elif self.kind == Parameter.VAR_POSITIONAL:
+                self.default = tuple()
 
         self.converter = converter
         if converter is bool:
