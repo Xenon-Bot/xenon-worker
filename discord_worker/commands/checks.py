@@ -15,7 +15,7 @@ class Check:
 def has_permissions(**required):
     def predicate(callback):
         async def check(ctx, *args, **kwargs):
-            guild = await ctx.get_guild()
+            guild = await ctx.get_full_guild()
             permissions = ctx.author.permissions_for_guild(guild)
             missing = []
             for perm in required.keys():
@@ -39,7 +39,7 @@ def bot_has_permissions(**required):
             if bot_member is None:
                 raise BotMissingPermissions(required.keys())
 
-            guild = await ctx.get_guild()
+            guild = await ctx.get_full_guild()
             permissions = bot_member.permissions_for_guild(guild)
             missing = []
             for perm in required.keys():
@@ -58,12 +58,11 @@ def bot_has_permissions(**required):
 
 def is_owner(callback):
     async def check(ctx, *args, **kwargs):
-        partial_guild = await ctx.get_guild_fields("owner_id")
-        if partial_guild is None:
+        guild = await ctx.get_guild()
+        if guild is None:
             raise NotOwner()
 
-        owner_id = partial_guild["owner_id"]
-        if ctx.author.id != owner_id:
+        if ctx.author.id != guild.owner_id:
             raise NotOwner()
 
         return True

@@ -35,7 +35,6 @@ class RabbitClient(CacheMixin, HttpMixin):
 
         self.http = HTTPClient(loop=loop)
         self.mongo = AsyncIOMotorClient(host=mongo_url)
-        self.cache = self.mongo.cache
 
     def _process_listeners(self, event, *args, **kwargs):
         if event.shard_id != "*":

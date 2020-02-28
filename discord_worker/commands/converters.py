@@ -51,7 +51,16 @@ class MemberConverter(Converter):
 
 class GuildConverter(Converter):
     async def _convert(self, ctx):
-        guild = await ctx.bot.get_guild(self.arg)
+        guild = await ctx.get_guild()
+        if guild is None:
+            raise ConverterFailed(self.parameter, self.arg, "Guild not found")
+
+        return guild
+
+
+class FullGuildConverter(Converter):
+    async def _convert(self, ctx):
+        guild = await ctx.get_full_guild()
         if guild is None:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
@@ -60,20 +69,14 @@ class GuildConverter(Converter):
 
 class ChannelConverter(Converter):
     async def _convert(self, ctx):
-        cursor = ctx.bot.get_channels(ctx.guild_id, {"$or": [
-            {
-                "_id": self.arg
-            },
-            {
-                "name": self.arg
-            }
-        ]})
+        mention = re.match(r"^<#(?P<id>\d+)>$", self.arg)
+        if mention:
+            channel_id = mention.group("id")
 
-        channel = None
-        async for ch in cursor:
-            channel = ch
-            break
+        else:
+            channel_id = self.arg
 
+        channel = await ctx.bot.get_channel(channel_id)
         if channel is None:
             raise ConverterFailed(self.parameter, self.arg, "Channel not found")
 
@@ -82,20 +85,14 @@ class ChannelConverter(Converter):
 
 class RoleConverter(Converter):
     async def _convert(self, ctx):
-        cursor = ctx.bot.get_roles(ctx.guild_id, {"$or": [
-            {
-                "_id": self.arg
-            },
-            {
-                "name": self.arg
-            }
-        ]})
+        mention = re.match(r"^<@&(?P<id>\d+)>$", self.arg)
+        if mention:
+            role_id = mention.group("id")
 
-        role = None
-        async for r in cursor:
-            role = r
-            break
+        else:
+            role_id = self.arg
 
+        role = await ctx.bot.get_role(role_id)
         if role is None:
             raise ConverterFailed(self.parameter, self.arg, "Role not found")
 

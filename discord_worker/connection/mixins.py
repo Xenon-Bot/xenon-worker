@@ -1,4 +1,6 @@
 from .entities import *
+import msgpack
+from .httpd import Route
 
 
 class HttpMixin:
@@ -57,50 +59,76 @@ class HttpMixin:
     async def app_info(self):
         return await self.http.application_info()
 
+    async def bot_gateway(self):
+        return await self.http.request(Route('GET', '/gateway/bot'))
+
 
 class CacheMixin:
-    async def get_guild_fields(self, guild_id, *fields):
-        return await self.cache.guilds.find_one({"_id": guild_id}, projection=fields)
+    async def get_full_guild(self, guild_id):
+        data = await self.redis.hget(f"guilds", guild_id)
+        if data is None:
+            return None
 
-    async def get_guild(self, guild_id):
-        guild = await self.cache.guilds.find_one({"_id": guild_id})
-        channels = self.cache.channels.find({"guild_id": guild_id})
-        roles = self.cache.roles.find({"guild_id": guild_id})
         data = {
-            **guild,
-            "channels": [c async for c in channels],
-            "roles": [r async for r in roles]
+            **msgpack.unpackb(data),
+            "channels": [c.to_dict() for c in await self.get_guild_channels(guild_id)],
+            "roles": [r.to_dict() for r in await self.get_guild_roles(guild_id)]
         }
         return Guild(data)
 
-    async def get_channels(self, guild_id, **filter_):
-        async for channel in self.cache.channels.find({"guild_id": guild_id, **filter_}):
-            yield Channel(channel)
+    async def get_guild(self, guild_id):
+        data = await self.redis.hget(f"guilds", guild_id)
+        if data is None:
+            return None
+
+        return Guild(data)
+
+    async def get_guild_channels(self, guild_id):
+        channel_ids = await self.redis.smembers(f"guilds:{guild_id}:channels")
+        return await self.get_channels(*channel_ids)
+
+    async def get_channels(self, *channel_ids):
+        return [c async for c in self.iter_channels(*channel_ids)]
+
+    async def iter_channels(self, *channel_ids):
+        raw = await self.redis.hmget('channels', *channel_ids)
+        for data in raw:
+            if data is not None:
+                yield Channel(msgpack.unpackb(data))
 
     async def get_channel(self, channel_id):
-        channel = await self.cache.channels.find_one({"_id": channel_id})
-        if channel is None:
+        data = await self.redis.hget(f"channels", channel_id)
+        if data is None:
             return None
 
-        return Channel(channel) if channel is not None else None
+        return Channel(msgpack.unpackb(data))
 
-    async def get_roles(self, guild_id, **filter_):
-        async for role in self.cache.roles.find({"guild_id": guild_id, **filter_}):
-            yield Role(role)
+    async def get_guild_roles(self, guild_id):
+        role_ids = await self.redis.smembers(f"guilds:{guild_id}:roles")
+        return await self.get_roles(*role_ids)
+
+    async def get_roles(self, *role_ids):
+        return [r async for r in self.iter_roles(*role_ids)]
+
+    async def iter_roles(self, *role_ids):
+        raw = await self.redis.hmget('roles', *role_ids)
+        for data in raw:
+            if data is not None:
+                yield Role(msgpack.unpackb(data))
 
     async def get_role(self, role_id):
-        role = await self.cache.roles.find_one({"_id": role_id})
-        if role is None:
+        data = await self.redis.hget(f"roles", role_id)
+        if data is None:
             return None
 
-        return Role(role)
+        return Role(msgpack.unpackb(data))
 
     async def get_member(self, guild_id, member_id):
-        member = await self.cache.members.find_one({"guild_id": guild_id, "user.id": member_id})
-        if member is None:
+        data = await self.redis.hget(f"guilds:{guild_id}:members", member_id)
+        if data is None:
             return None
 
-        return Member(member)
+        return Member(msgpack.unpackb(data))
 
     def get_bot_member(self, guild_id):
         return self.get_member(guild_id, self.user.id)
