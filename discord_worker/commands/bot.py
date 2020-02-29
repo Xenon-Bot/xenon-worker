@@ -29,7 +29,7 @@ class RabbitBot(RabbitClient, CommandTable):
         super()._process_listeners(event, *args, **kwargs)
 
     async def process_commands(self, shard_id, msg):
-        parts = msg.content[len(self.prefix):].split(" ")
+        parts = msg.content.split(" ")
         try:
             parts, cmd = self.find_command(parts)
         except CommandNotFound:
@@ -113,7 +113,7 @@ class RabbitBot(RabbitClient, CommandTable):
         else:
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
 
-    async def on_message_create(self, shard_id, data):
+    async def on_command(self, shard_id, data):
         msg = Message(data)
         await self.process_commands(shard_id, msg)
 
@@ -149,8 +149,11 @@ class RabbitBot(RabbitClient, CommandTable):
     def schedule(self, coro):
         return self.loop.create_task(coro)
 
-    async def start(self, *args, **kwargs):
-        await super().start(*args, **kwargs)
+    async def start(self, *subscriptions):
+        subscriptions = set(subscriptions)
+        subscriptions.add("command")
+
+        await super().start(*subscriptions)
         self.dispatch("load")
 
     async def close(self):

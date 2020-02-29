@@ -133,7 +133,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         await self._subscribe_dyn(key)
         return await asyncio.wait_for(future, timeout)
 
-    async def start(self, command_queue, subscriptions=None):
+    async def start(self, *subscriptions):
         try:
             user_data = await self.http.static_login()
             self.user = User(user_data)
@@ -148,16 +148,14 @@ class RabbitClient(CacheMixin, HttpMixin):
                 self.static_subscriptions.add(subscription)
 
             await self.channel.basic_consume(self.queue.queue, self._message_received, no_ack=True)
-            await self.channel.queue_declare(queue=command_queue)
-            await self.channel.basic_consume(command_queue, self._message_received, no_ack=True)
 
         except ConnectionError:
             traceback.print_exc()
             await asyncio.sleep(5)
-            return await self.start(command_queue, subscriptions)
+            return await self.start(subscriptions)
 
-    def run(self, *args, **kwargs):
-        self.loop.create_task(self.start(*args, **kwargs))
+    def run(self, *subscriptions):
+        self.loop.create_task(self.start(*subscriptions))
         self.loop.run_forever()
 
     async def close(self):
