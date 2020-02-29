@@ -14,6 +14,7 @@ setup(
         "aiormq==3.2.0",
         "motor==2.1.0",
         "ujson==1.35",
-        "msgpack==1.0.0"
+        "msgpack==1.0.0",
+        'aioredis>=1.3.1'
     ]
 )
