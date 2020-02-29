@@ -59,6 +59,9 @@ class HttpMixin:
     async def app_info(self):
         return await self.http.application_info()
 
+    async def edit_guild(self, guild, *args, **kwargs):
+        return await self.http.edit_guild(guild.id, *args, **kwargs)
+
     async def bot_gateway(self):
         return await self.http.request(Route('GET', '/gateway/bot'))
 
@@ -132,3 +135,17 @@ class CacheMixin:
 
     def get_bot_member(self, guild_id):
         return self.get_member(guild_id, self.user.id)
+
+    async def get_state(self):
+        state = await self.redis.hgetall("state")
+        return {
+            k.decode("utf-8"): msgpack.unpackb(v)
+            for k, v in state.items()
+        }
+
+    async def get_shards(self):
+        shards = await self.redis.hgetall("shards")
+        return {
+            k.decode("utf-8"): msgpack.unpackb(v)
+            for k, v in shards.items()
+        }
