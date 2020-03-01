@@ -127,6 +127,7 @@ class Member(User):
         self.user = User(data["user"])
         self.joined_at = parse_time(data.get("joined_at"))
         self.premium_since = parse_time(data.get("premium_since"))
+        self.roles = data.get("roles", [])
 
     def __getattr__(self, item):
         user_attr = getattr(self.user, item)
