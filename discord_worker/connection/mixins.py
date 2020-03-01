@@ -16,8 +16,8 @@ class HttpMixin:
         return await self.http.delete_message(message.channel_id, message.id, *args, **kwargs)
 
     async def start_dm(self, user):
-        res = await self.http.start_private_message(user.id)
-        return Channel(res)
+        result = await self.http.start_private_message(user.id)
+        return Channel(result)
 
     async def add_reaction(self, message, *args, **kwargs):
         return await self.http.add_reaction(message.channel_id, message.id, *args, **kwargs)
@@ -33,7 +33,8 @@ class HttpMixin:
         return User(result)
 
     async def fetch_message(self, channel, message_id):
-        return await self.http.get_message(channel.id, message_id)
+        result = await self.http.get_message(channel.id, message_id)
+        return Message(result)
 
     async def fetch_member(self, guild, member_id):
         result = await self.http.get_member(guild.id, member_id)
