@@ -5,10 +5,7 @@ from .httpd import Route
 
 class HttpMixin:
     async def send_message(self, channel, *args, **kwargs):
-        if isinstance(channel, Channel):
-            channel = channel.id
-
-        result = await self.http.send_message(channel, *args, **kwargs)
+        result = await self.http.send_message(channel.id, *args, **kwargs)
         return Message(result)
 
     async def edit_message(self, message, *args, **kwargs):
@@ -17,6 +14,10 @@ class HttpMixin:
 
     async def delete_message(self, message, *args, **kwargs):
         return await self.http.delete_message(message.channel_id, message.id, *args, **kwargs)
+
+    async def start_dm(self, user):
+        res = await self.http.start_private_message(user.id)
+        return Channel(res)
 
     async def add_reaction(self, message, *args, **kwargs):
         return await self.http.add_reaction(message.channel_id, message.id, *args, **kwargs)
@@ -30,6 +31,9 @@ class HttpMixin:
     async def fetch_user(self, user_id):
         result = await self.http.get_user(user_id)
         return User(result)
+
+    async def fetch_message(self, channel, message_id):
+        return await self.http.get_message(channel.id, message_id)
 
     async def fetch_member(self, guild, member_id):
         result = await self.http.get_member(guild.id, member_id)
@@ -149,3 +153,7 @@ class CacheMixin:
             k.decode("utf-8"): msgpack.unpackb(v)
             for k, v in shards.items()
         }
+
+    async def guild_shard(self, guild_id):
+        state = await self.get_state()
+        return (int(guild_id) >> 22) % int(state["shard_count"])

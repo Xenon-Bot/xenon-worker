@@ -1,3 +1,5 @@
+from ..connection.entities import Snowflake
+
 class Context:
     def __init__(self, client, shard_id, msg):
         self.client = client
@@ -33,10 +35,10 @@ class Context:
         return await self.client.get_guild_roles(self.msg.guild_id)
 
     def f_send(self, *args, **kwargs):
-        return self.bot.f_send(self.msg.channel_id, *args, **kwargs)
+        return self.bot.f_send(Snowflake(self.msg.channel_id), *args, **kwargs)
 
     def send_message(self, *args, **kwargs):
-        return self.client.send_message(self.msg.channel_id, *args, **kwargs)
+        return self.client.send_message(Snowflake(self.msg.channel_id), *args, **kwargs)
 
     def send(self, *args, **kwargs):
         return self.send_message(*args, **kwargs)
