@@ -37,11 +37,9 @@ class RabbitClient(CacheMixin, HttpMixin):
         self.mongo = AsyncIOMotorClient(host=mongo_url)
 
     def _process_listeners(self, event, *args, **kwargs):
-        if event.shard_id != "*":
-            # Process wildcard too
-            self._process_listeners(Event(event.name), *args, **kwargs)
-
         listeners = self.listeners.get(str(event), [])
+        # Process wildcards too
+        listeners += self.listeners.get(str(Event(event.name)), [])
         to_remove = []
         for i, (future, check) in enumerate(listeners):
             if future.cancelled():
