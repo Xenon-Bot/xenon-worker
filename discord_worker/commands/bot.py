@@ -112,6 +112,7 @@ class RabbitBot(RabbitClient, CommandTable):
 
         else:
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+            await ctx.f_send(f"```{str(e)}```", f=self.f.ERROR)
 
     async def on_command(self, shard_id, data):
         msg = Message(data)
