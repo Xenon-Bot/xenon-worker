@@ -138,14 +138,14 @@ class CommandParameter:
             converter = self.converter or str
             arg = args.pop(0)
 
-        try:
-            if issubclass(converter, Converter):
-                return converter(self, arg)
+        if issubclass(converter, Converter):
+            return converter(self, arg)
 
-            else:
+        else:
+            try:
                 return converter(arg)
-        except Exception as e:
-            raise ConverterFailed(self, arg, str(e))
+            except Exception as e:
+                raise ConverterFailed(self, arg, str(e))
 
 
 class Command(BaseCommand):
