@@ -65,7 +65,13 @@ class RabbitBot(RabbitClient, CommandTable):
             )
 
         elif isinstance(e, ConverterFailed):
-            pass
+            name = e.parameter.converter.__name__
+            name = name.replace("Converter", "")
+
+            await ctx.f_send(
+                f"The **value `{e.value}`** passed to `{e.parameter.name}` is **not a valid `{name}`**",
+                f=self.f.ERROR
+            )
 
         elif isinstance(e, MissingPermissions):
             await ctx.f_send(
@@ -111,7 +117,7 @@ class RabbitBot(RabbitClient, CommandTable):
             )
 
         else:
-            tb = traceback.format_exception(type(e), e, e.__traceback__)
+            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             print(tb, file=sys.stderr)
             await ctx.f_send(f"```py\n{e.__class__.__name__}:\n{str(e)}\n```", f=self.f.ERROR)
             try:
