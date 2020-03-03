@@ -40,6 +40,18 @@ class HttpMixin:
         result = await self.http.get_member(guild.id, member_id)
         return Member(result)
 
+    async def fetch_roles(self, guild):
+        result = await self.http.get_roles(guild.id)
+        return [Role(r) for r in result]
+
+    async def fetch_guild(self, guild_id):
+        result = await self.http.get_guild(guild_id)
+        return Channel(result)
+
+    async def fetch_channel(self, channel_id):
+        result = await self.http.get_channel(channel_id)
+        return Channel(result)
+
     async def create_channel(self, guild, *args, **kwargs):
         result = await self.http.create_channel(guild.id, *args, **kwargs)
         return Channel(result)
