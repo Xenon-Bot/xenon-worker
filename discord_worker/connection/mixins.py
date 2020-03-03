@@ -89,7 +89,7 @@ class CacheMixin:
         if data is None:
             return None
 
-        return Guild(data)
+        return Guild(msgpack.unpackb(data))
 
     async def get_guild_channels(self, guild_id):
         channel_ids = await self.redis.smembers(f"guilds:{guild_id}:channels")
