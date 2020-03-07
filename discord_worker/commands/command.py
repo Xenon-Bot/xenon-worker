@@ -1,16 +1,25 @@
 from inspect import cleandoc, getdoc, Parameter, signature, ismethod, isawaitable
 from abc import ABC
 
-from .checks import Check
+from .checks import Check, Cooldown
 from .errors import *
 from .converters import Converter
 
 
 class BaseCommand(ABC):
-    def __init__(self, *commands):
+    def __init__(self, *commands, keep_checks=True):
         self.parent = None  # Gets filled up by BaseCommand.add_command if this command is not the top level one
         self._checks = []
+        self._cooldown = None
         self.commands = list(commands)
+        self.keep_checks = keep_checks
+
+    def set_cooldown(self, cooldown: Cooldown):
+        self._cooldown = cooldown
+
+    async def reset_cooldown(self):
+        if self._cooldown is not None:
+            await self._cooldown.reset()
 
     def add_check(self, check: Check):
         self._checks.append(check)
@@ -18,7 +27,7 @@ class BaseCommand(ABC):
     @property
     def checks(self):
         # Include checks from the parent
-        if self.parent is not None:
+        if self.parent is not None and self.keep_checks:
             yield from self.parent.checks
 
         yield from self._checks
@@ -161,15 +170,19 @@ class CommandParameter:
 
 
 class Command(BaseCommand):
-    def __init__(self, callback, name=None, description=None, aliases=None, hidden=False):
-        super().__init__()
+    def __init__(self, callback, name=None, description=None, aliases=None, hidden=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.module = None  # Gets filled by fill_module in Bot.add_module if this commands belongs to a module
 
         cb = callback
         # Go through all decorators until we reach the actual callback
         while isinstance(cb, Check):
-            self.add_check(cb)
+            if isinstance(cb, Cooldown):
+                self.set_cooldown(cb)
+            else:
+                self.add_check(cb)
+
             cb = cb.next
 
         self.callback = cb
@@ -261,6 +274,9 @@ class Command(BaseCommand):
 
         for check in self.checks:
             await check.run(ctx, *default, *args, **kwargs)
+
+        if self._cooldown is not None:
+            await self._cooldown.run(ctx, *default, *args, **kwargs)
 
         if self.module is None:
             res = self.callback(ctx, *default, *args, **kwargs)

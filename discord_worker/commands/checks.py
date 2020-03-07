@@ -125,29 +125,44 @@ class CooldownType(Enum):
     AUTHOR = 3
 
 
-def cooldown(rate: int, per: float, bucket=CooldownType.AUTHOR):
+class Cooldown(Check):
+    def __init__(self, rate: int, per: float, bucket=CooldownType.AUTHOR, next=None):
+        super().__init__(self.check, next)
+        self.rate = rate
+        self.per = per
+        self.bucket = bucket
+
+    def get_key(self, ctx):
+        if self.bucket == CooldownType.GUILD:
+            key = ctx.guild_id
+
+        elif self.bucket == CooldownType.CHANNEL:
+            key = ctx.channel_id
+
+        elif self.bucket == CooldownType.AUTHOR:
+            key = ctx.author.id
+
+        else:
+            key = "*"
+
+        return "cmd_" + ctx.last_cmd.full_name.replace(" ", "") + "_" + key
+
+    async def check(self, ctx, *args, **kwargs):
+        key = self.get_key(ctx)
+        current = int(await ctx.bot.redis.get(key) or 0)
+        if current >= self.rate:
+            remaining = await ctx.bot.redis.ttl(key)
+            raise CommandOnCooldown(self.rate, self.per, self.bucket, remaining)
+
+        await ctx.bot.redis.setex(key, self.per, current + 1)
+
+    async def reset(self, ctx):
+        key = self.get_key(ctx)
+        await ctx.bot.redis.delete(key)
+
+
+def cooldown(*args, **kwargs):
     def predicate(callback):
-        async def check(ctx, *args, **kwargs):
-            if bucket == CooldownType.GUILD:
-                key = ctx.guild_id
-
-            elif bucket == CooldownType.CHANNEL:
-                key = ctx.channel_id
-
-            elif bucket == CooldownType.AUTHOR:
-                key = ctx.author.id
-
-            else:
-                key = "*"
-
-            full_key = "cmd_" + ctx.last_cmd.full_name.replace(" ", "") + "_" + key
-            current = int(await ctx.bot.redis.get(full_key) or 0)
-            if current >= rate:
-                remaining = await ctx.bot.redis.ttl(full_key)
-                raise CommandOnCooldown(rate, per, bucket, remaining)
-
-            await ctx.bot.redis.setex(full_key, per, current + 1)
-
-        return Check(check, callback)
+        return Cooldown(*args, **kwargs, next=callback)
 
     return predicate
