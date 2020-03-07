@@ -9,7 +9,19 @@ from .converters import Converter
 class BaseCommand(ABC):
     def __init__(self, *commands):
         self.parent = None  # Gets filled up by BaseCommand.add_command if this command is not the top level one
+        self._checks = []
         self.commands = list(commands)
+
+    def add_check(self, check: Check):
+        self._checks.append(check)
+
+    @property
+    def checks(self):
+        # Include checks from the parent
+        if self.parent is not None:
+            yield from self.parent.checks
+
+        yield from self._checks
 
     @property
     def full_name(self):
@@ -153,11 +165,11 @@ class Command(BaseCommand):
         super().__init__()
 
         self.module = None  # Gets filled by fill_module in Bot.add_module if this commands belongs to a module
-        self.checks = []
 
         cb = callback
+        # Go through all decorators until we reach the actual callback
         while isinstance(cb, Check):
-            self.checks.append(cb)
+            self.add_check(cb)
             cb = cb.next
 
         self.callback = cb

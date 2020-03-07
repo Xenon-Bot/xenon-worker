@@ -4,8 +4,8 @@ from enum import Enum
 
 
 class Check:
-    def __init__(self, callback, check):
-        self.next = callback
+    def __init__(self, check, next=None):
+        self.next = next
         self.check = check
 
     def run(self, ctx, *args, **kwargs):
@@ -27,7 +27,7 @@ def has_permissions(**required):
 
             return True
 
-        return Check(callback, check)
+        return Check(check, callback)
 
     return predicate
 
@@ -51,7 +51,7 @@ def bot_has_permissions(**required):
 
             return True
 
-        return Check(callback, check)
+        return Check(check, callback)
 
     return predicate
 
@@ -67,7 +67,7 @@ def is_owner(callback):
 
         return True
 
-    return Check(callback, check)
+    return Check(check, callback)
 
 
 def is_bot_owner(callback):
@@ -85,7 +85,7 @@ def is_bot_owner(callback):
 
         return True
 
-    return Check(callback, check)
+    return Check(check, callback)
 
 
 def guild_only(callback):
@@ -100,7 +100,7 @@ def guild_only(callback):
 
         return True
 
-    return Check(callback, check)
+    return Check(check, callback)
 
 
 def dm_only(callback):
@@ -115,7 +115,7 @@ def dm_only(callback):
 
         return True
 
-    return Check(callback, check)
+    return Check(check, callback)
 
 
 class CooldownType(Enum):
@@ -148,6 +148,6 @@ def cooldown(rate: int, per: float, bucket=CooldownType.AUTHOR):
 
             await ctx.bot.redis.setex(full_key, per, current + 1)
 
-        return Check(callback, check)
+        return Check(check, callback)
 
     return predicate
