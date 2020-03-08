@@ -138,12 +138,12 @@ class RabbitClient(CacheMixin, HttpMixin):
         await self._subscribe_dyn(key)
         return await asyncio.wait_for(future, timeout)
 
-    async def start(self, shared_queue, *shared_subs):
+    async def start(self, token, shared_queue, *shared_subs):
         try:
-            user_data = await self.http.static_login()
-            self.user = User(user_data)
+            self.http.redis = self.redis = await aioredis.create_redis_pool(self.redis_url)
 
-            self.redis = await aioredis.create_redis_pool(self.redis_url)
+            user_data = await self.http.static_login(token)
+            self.user = User(user_data)
 
             self.connection = await aiormq.connect(self.url)
             self.channel = await self.connection.channel()

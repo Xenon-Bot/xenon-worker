@@ -21,8 +21,13 @@ async def sane_wait_for(futures, *, timeout):
 
 async def json_or_text(response):
     text = await response.text(encoding='utf-8')
-    if response.content_type == 'application/json':
-        return json.loads(text)
+    try:
+        if response.headers['content-type'] == 'application/json':
+            return json.loads(text)
+    except KeyError:
+        # Thanks Cloudflare
+        pass
+
     return text
 
 
