@@ -76,7 +76,11 @@ class ListMenu:
                     raise asyncio.TimeoutError
 
             except asyncio.TimeoutError:
-                await self.ctx.client.clear_reactions(self.msg)
+                try:
+                    await self.ctx.client.clear_reactions(self.msg)
+                except Exception:
+                    pass
+
                 return
 
             await self.update()
