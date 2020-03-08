@@ -145,7 +145,7 @@ class Cooldown(Check):
         else:
             key = "*"
 
-        return "cmd_" + ctx.last_cmd.full_name.replace(" ", "") + "_" + key
+        return "cooldown:" + ctx.last_cmd.full_name.replace(" ", "") + ":" + key
 
     async def check(self, ctx, *args, **kwargs):
         key = self.get_key(ctx)
