@@ -28,6 +28,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         self.connection = None
         self.channel = None
         self.queue = None
+        self.s_queue = None
         self.redis_url = redis_url
         self.redis = None
         self.listeners = {}
@@ -98,11 +99,17 @@ class RabbitClient(CacheMixin, HttpMixin):
 
         return self.unsubscribe(routing_key, force)
 
-    def subscribe(self, routing_key):
+    def subscribe(self, routing_key, shared=False):
+        if shared:
+            return self.channel.queue_bind(self.s_queue.queue, "events", routing_key)
+
         self.static_subscriptions.add(routing_key)
         return self.channel.queue_bind(self.queue.queue, "events", routing_key)
 
-    def unsubscribe(self, routing_key, force=False):
+    def unsubscribe(self, routing_key, force=False, shared=False):
+        if shared:
+            return self.channel.queue_unbind(self.s_queue.queue, "events", routing_key)
+
         if self.has_listener(routing_key) and not force:
             return False
 
@@ -131,7 +138,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         await self._subscribe_dyn(key)
         return await asyncio.wait_for(future, timeout)
 
-    async def start(self, *subscriptions):
+    async def start(self, shared_queue, *shared_subs):
         try:
             user_data = await self.http.static_login()
             self.user = User(user_data)
@@ -140,20 +147,26 @@ class RabbitClient(CacheMixin, HttpMixin):
 
             self.connection = await aiormq.connect(self.url)
             self.channel = await self.connection.channel()
+
+            # The shared queue is used for commands and other events that should be shared between replicated workers
+            self.s_queue = await self.channel.queue_declare(queue=shared_queue, arguments={"x-message-ttl": 10000})
+
+            # The exclusive queue is used for wait_for and other events that an individual worker has to receive
             self.queue = await self.channel.queue_declare(queue='', arguments={"x-max-length": 1000}, exclusive=True)
-            for subscription in subscriptions or []:
-                await self.channel.queue_bind(self.queue.queue, "events", subscription)
-                self.static_subscriptions.add(subscription)
+
+            await self.channel.basic_consume(self.s_queue.queue, self._message_received, no_ack=True)
+            for sub in shared_subs or []:
+                await self.channel.queue_bind(self.s_queue.queue, "events", sub)
 
             await self.channel.basic_consume(self.queue.queue, self._message_received, no_ack=True)
 
         except ConnectionError:
             traceback.print_exc()
             await asyncio.sleep(5)
-            return await self.start(subscriptions)
+            return await self.start(shared_queue, *shared_subs)
 
-    def run(self, *subscriptions):
-        self.loop.create_task(self.start(*subscriptions))
+    def run(self, *args, **kwargs):
+        self.loop.create_task(self.start(*args, **kwargs))
         self.loop.run_forever()
 
     async def close(self):

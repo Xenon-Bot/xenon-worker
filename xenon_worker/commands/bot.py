@@ -161,11 +161,11 @@ class RabbitBot(RabbitClient, CommandTable):
     def schedule(self, coro):
         return self.loop.create_task(coro)
 
-    async def start(self, *subscriptions):
-        subscriptions = set(subscriptions)
+    async def start(self, shared_queue, *shared_subs):
+        subscriptions = set(shared_subs)
         subscriptions.add("command")
 
-        await super().start(*subscriptions)
+        await super().start(shared_queue, *subscriptions)
         self.dispatch("load")
 
     async def close(self):
