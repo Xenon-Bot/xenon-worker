@@ -48,6 +48,12 @@ class HttpMixin:
         result = await self.http.get_guild(guild_id)
         return Channel(result)
 
+    async def fetch_bans(self, guild):
+        return await self.http.get_bans(guild.id)
+
+    async def ban_user(self, guild, user, *args, **kwargs):
+        return await self.http.ban(user.id, guild.id, *args, **kwargs)
+
     async def fetch_channel(self, channel_id):
         result = await self.http.get_channel(channel_id)
         return Channel(result)
