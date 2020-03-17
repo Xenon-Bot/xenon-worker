@@ -2,7 +2,6 @@ import asyncio
 import logging
 from urllib.parse import quote as _uriquote
 from . import utils
-from os import environ as env
 import sys
 
 import aiohttp

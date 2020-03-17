@@ -26,6 +26,7 @@ async def json_or_text(response):
             return json.loads(text)
     except KeyError:
         # Thanks Cloudflare
+
         pass
 
     return text

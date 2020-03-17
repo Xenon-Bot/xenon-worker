@@ -243,7 +243,7 @@ class Message(Entity):
         # self.mention_everyone
         self.author = Member({"user": data["author"], **data.get("member", {})})
         self.edited_timestamp = parse_time(data["edited_timestamp"])
-        # self.attachments
+        self.attachments = data.get("attachments", [])
 
     @property
     def member(self):
