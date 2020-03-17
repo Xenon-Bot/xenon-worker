@@ -1,6 +1,106 @@
 from .entities import *
 import msgpack
 from .httpd import Route
+import asyncio
+
+
+class MemberIterator:
+    def __init__(self, client, guild, limit=None, after=None):
+        self.client = client
+        self.guild = guild
+        self.limit = limit or 1000
+        self.after = after or Snowflake("0")
+
+        self.members = asyncio.Queue()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        return await self.next()
+
+    async def next(self):
+        if self.members.empty():
+            await self.fill_members()
+
+        try:
+            return self.members.get_nowait()
+        except asyncio.QueueEmpty:
+            raise StopAsyncIteration
+
+    async def fill_members(self):
+        if self.limit <= 0:
+            return
+
+        members = await self.client.fetch_members(self.guild, self.limit, self.after)
+        if not members:
+            return
+
+        self.after = members[-1]
+        for member in reversed(members):
+            await self.members.put(member)
+
+        self.limit -= 1000
+
+
+class MessageIterator:
+    def __init__(self, client, channel, limit=None, before=None, after=None, around=None):
+        self.client = client
+        self.channel = channel
+        self.limit = limit or 100
+        self.before = before
+        self.after = after or Snowflake("0")
+        self.around = around
+
+        self.messages = asyncio.Queue()
+
+        if after:
+            self._retrieve_messages = self._retrieve_messages_after
+
+        elif around:
+            self._retrieve_messages = self._retrieve_messages_around
+
+        else:
+            self._retrieve_messages = self._retrieve_messages_before
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        return await self.next()
+
+    async def next(self):
+        if self.messages.empty():
+            await self.fill_messages()
+
+        try:
+            return self.messages.get_nowait()
+        except asyncio.QueueEmpty:
+            raise StopAsyncIteration
+
+    async def fill_messages(self):
+        if self.limit <= 0:
+            return
+
+        messages = await self._retrieve_messages()
+        for message in messages:
+            await self.messages.put(message)
+
+        self.limit -= 100
+
+    async def _retrieve_messages(self):
+        pass
+
+    async def _retrieve_messages_after(self):
+        pass
+
+    async def _retrieve_messages_before(self):
+        messages = await self.client.fetch_messages(self.channel, self.limit, before=self.before)
+        self.before = messages[-1]
+        return messages
+
+    async def _retrieve_messages_around(self):
+        pass
 
 
 class HttpMixin:
@@ -14,6 +114,21 @@ class HttpMixin:
 
     async def delete_message(self, message, *args, **kwargs):
         return await self.http.delete_message(message.channel_id, message.id, *args, **kwargs)
+
+    async def fetch_message(self, channel, message_id):
+        result = await self.http.get_message(channel.id, message_id)
+        return Message(result)
+
+    async def fetch_messages(self, channel, limit=100, before=None, after=None, around=None):
+        # Only works for up to 100 messages. See iter_messages
+        before = before.id if before else None
+        after = after.id if after else None
+        around = around.id if around else None
+        result = await self.http.logs_from(channel, limit, before, after, around)
+        return [Message(r) for r in result]
+
+    def iter_messages(self, channel, limit=100, before=None, after=None, around=None):
+        pass
 
     async def start_dm(self, user):
         result = await self.http.start_private_message(user.id)
@@ -32,13 +147,20 @@ class HttpMixin:
         result = await self.http.get_user(user_id)
         return User(result)
 
-    async def fetch_message(self, channel, message_id):
-        result = await self.http.get_message(channel.id, message_id)
-        return Message(result)
-
     async def fetch_member(self, guild, member_id):
         result = await self.http.get_member(guild.id, member_id)
         return Member(result)
+
+    async def fetch_members(self, guild, limit=1000, after=None):
+        """
+        Only works for up to 1000 members. See iter_members
+        """
+        after = after.id if after else None
+        result = await self.http.get_members(guild.id, limit, after)
+        return [Member(r) for r in result]
+
+    def iter_members(self, guild, limit=1000, after=None):
+        return MemberIterator(self, guild, limit, after)
 
     async def fetch_roles(self, guild):
         result = await self.http.get_roles(guild.id)
