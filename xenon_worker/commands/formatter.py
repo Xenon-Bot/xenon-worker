@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from .errors import CommandError
 
 
-class FormatRaise(Exception):
+class FormatRaise(CommandError):
     def __init__(self, f, *args, **kwargs):
         self.f = f
         self.args = args
