@@ -32,7 +32,7 @@ class MemberIterator:
         if self.limit <= 0:
             return
 
-        members = await self.client.fetch_members(self.guild, self.limit, self.after)
+        members = await self.client.fetch_members(self.guild, min(self.limit, 1000), self.after)
         if not members:
             return
 
@@ -95,8 +95,12 @@ class MessageIterator:
         pass
 
     async def _retrieve_messages_before(self):
-        messages = await self.client.fetch_messages(self.channel, self.limit, before=self.before)
+        messages = await self.client.fetch_messages(self.channel, min(self.limit, 100), before=self.before)
+        if not messages:
+            return []
+
         self.before = messages[-1]
+        print(self.before.id)
         return messages
 
     async def _retrieve_messages_around(self):
@@ -128,7 +132,7 @@ class HttpMixin:
         return [Message(r) for r in result]
 
     def iter_messages(self, channel, limit=100, before=None, after=None, around=None):
-        pass
+        return MessageIterator(self, channel.id, limit, before, after, around)
 
     async def start_dm(self, user):
         result = await self.http.start_private_message(user.id)
