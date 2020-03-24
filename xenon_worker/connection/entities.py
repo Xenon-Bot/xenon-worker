@@ -110,7 +110,11 @@ class User(Entity):
 
     @property
     def avatar_url(self):
-        return None
+        if self.avatar:
+            return f"{DISCORD_CDN}/avatars/{self.id}/{self.avatar}.png"
+
+        else:
+            return f"{DISCORD_CDN}/embed/avatars/{int(self.discriminator) % 5}.png"
 
     @property
     def mention(self):
