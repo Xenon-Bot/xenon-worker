@@ -27,11 +27,16 @@ class Route:
         # major parameters:
         self.channel_id = parameters.get('channel_id')
         self.guild_id = parameters.get('guild_id')
+        self.webhook_id = parameters.get('webhook_id')
 
     @property
     def bucket(self):
         # the bucket is just method + path w/ major parameters
-        return '{0.channel_id}:{0.guild_id}:{0.path}'.format(self)
+        if self.webhook_id is not None:
+            return '{0.channel_id}:{0.guild_id}:{0.webhook_id}:{0.path}'.format(self)
+
+        else:
+            return '{0.channel_id}:{0.guild_id}:{0.path}'.format(self)
 
 
 class MaybeUnlock:
@@ -545,6 +550,14 @@ class HTTPClient:
         r = Route('POST', '/channels/{channel_id}/webhooks', channel_id=channel_id)
         return self.request(r, json=payload, reason=reason)
 
+    def delete_webhook(self, webhook_id, webhook_token):
+        return self.request(Route(
+            'DELETE',
+            '/webhooks/{webhook_id}/{webhook_token}',
+            webhook_id=webhook_id,
+            webhook_token=webhook_token
+        ))
+
     def channel_webhooks(self, channel_id):
         return self.request(Route('GET', '/channels/{channel_id}/webhooks', channel_id=channel_id))
 
@@ -559,6 +572,14 @@ class HTTPClient:
             'webhook_channel_id': str(webhook_channel_id)
         }
         return self.request(Route('POST', '/channels/{channel_id}/followers', channel_id=channel_id), json=payload)
+
+    def execute_webhook(self, webhook_id, webhook_token, wait=False, **options):
+        r = Route('POST', '/webhooks/{webhook_id}/{webhook_token}', webhook_id=webhook_id, webhook_token=webhook_token)
+        valid_keys = ("content", "username", "avatar_url", "tts", "file", "embeds")
+        payload = {
+            k: v for k, v in options.items() if k in valid_keys
+        }
+        return self.request(r, json=payload, params={"wait": 'true' if wait else 'false'})
 
     # Guild management
 

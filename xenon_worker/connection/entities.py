@@ -248,3 +248,9 @@ class Message(Entity):
     @property
     def member(self):
         return self.author
+
+
+class Webhook(Entity):
+    def _preprocess(self, data):
+        self.user = User(data.get("user"))
+        self.type = WebhookType(data["type"])

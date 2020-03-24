@@ -100,7 +100,6 @@ class MessageIterator:
             return []
 
         self.before = messages[-1]
-        print(self.before.id)
         return messages
 
     async def _retrieve_messages_around(self):
@@ -183,6 +182,21 @@ class HttpMixin:
     async def fetch_channel(self, channel_id):
         result = await self.http.get_channel(channel_id)
         return Channel(result)
+
+    async def create_webhook(self, channel, *args, **kwargs):
+        result = await self.http.create_webhook(channel.id, *args, **kwargs)
+        return Webhook(result)
+
+    async def delete_webhook(self, webhook):
+        return await self.http.delete_webhook(webhook.id, webhook.token)
+
+    async def execute_webhook(self, webhook, *args, **kwargs):
+        result = await self.http.execute_webhook(webhook.id, webhook.token, *args, **kwargs)
+        if isinstance(result, dict):
+            return Message(result)
+
+        else:
+            return None
 
     async def create_channel(self, guild, *args, **kwargs):
         result = await self.http.create_channel(guild.id, *args, **kwargs)
