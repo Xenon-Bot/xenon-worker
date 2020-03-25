@@ -162,6 +162,9 @@ class HttpMixin:
         result = await self.http.get_members(guild.id, limit, after)
         return [Member(r) for r in result]
 
+    async def edit_member(self, guild, member, *args, **kwargs):
+        return await self.http.edit_member(guild.id, member.id, *args, **kwargs)
+
     def iter_members(self, guild, limit=1000, after=None):
         return MemberIterator(self, guild, limit, after)
 
