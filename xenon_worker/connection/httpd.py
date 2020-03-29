@@ -297,7 +297,7 @@ class HTTPClient:
 
         return self.request(Route('POST', '/users/@me/channels'), json=payload)
 
-    def send_message(self, channel_id, content="", *, tts=False, embed=None, nonce=None):
+    def send_message(self, channel_id, content="", *, tts=False, embed=None, nonce=None, allowed_mentions=None):
         r = Route('POST', '/channels/{channel_id}/messages', channel_id=channel_id)
         payload = {}
 
@@ -312,6 +312,9 @@ class HTTPClient:
 
         if nonce:
             payload['nonce'] = nonce
+
+        if allowed_mentions:
+            payload['allowed_mentions'] = allowed_mentions
 
         return self.request(r, json=payload)
 
@@ -575,7 +578,7 @@ class HTTPClient:
 
     def execute_webhook(self, webhook_id, webhook_token, wait=False, **options):
         r = Route('POST', '/webhooks/{webhook_id}/{webhook_token}', webhook_id=webhook_id, webhook_token=webhook_token)
-        valid_keys = ("content", "username", "avatar_url", "tts", "file", "embeds")
+        valid_keys = ("content", "username", "avatar_url", "tts", "file", "embeds", "allowed_mentions")
         payload = {
             k: v for k, v in options.items() if k in valid_keys
         }
