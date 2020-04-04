@@ -16,7 +16,11 @@ def flatten_error_dict(d, key=''):
     return dict(items)
 
 
-class HTTPException(Exception):
+class DiscordException(Exception):
+    pass
+
+
+class HTTPException(DiscordException):
     """Exception that's thrown when an HTTP request operation fails.
 
     Attributes
