@@ -639,7 +639,6 @@ class HTTPClient:
         }
 
         files = options.get("files", [])
-        print(files)
         if len(files) > 0:
             form = aiohttp.FormData()
             form.add_field("payload_json", utils.to_json(payload))
@@ -653,7 +652,6 @@ class HTTPClient:
                     form.add_field('file%s' % index, file.fp, filename=file.filename,
                                    content_type='application/octet-stream')
 
-            print(form._fields)
             return self.request(r, data=form, files=files, params={"wait": 'true' if wait else 'false'})
 
         else:
