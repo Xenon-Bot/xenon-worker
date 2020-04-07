@@ -4,6 +4,7 @@ import asyncio
 import traceback
 from motor.motor_asyncio import AsyncIOMotorClient
 import aioredis
+import aiohttp
 
 from .httpd import HTTPClient
 from .entities import User
@@ -33,6 +34,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         self.redis = None
         self.listeners = {}
         self.static_subscriptions = set()
+        self.session = None
 
         self.http = HTTPClient(loop=loop)
         self.mongo = AsyncIOMotorClient(host=mongo_url)
@@ -140,6 +142,7 @@ class RabbitClient(CacheMixin, HttpMixin):
 
     async def start(self, token, shared_queue, *shared_subs):
         try:
+            self.session = aiohttp.ClientSession(loop=self.loop)
             self.http.redis = self.redis = await aioredis.create_redis_pool(self.redis_url)
 
             user_data = await self.http.static_login(token)

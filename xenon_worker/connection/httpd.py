@@ -3,6 +3,8 @@ import logging
 from urllib.parse import quote as _uriquote
 from . import utils
 import sys
+import os.path
+import io
 
 import aiohttp
 
@@ -10,6 +12,59 @@ from .errors import HTTPException, Forbidden, NotFound, LoginFailure, GatewayNot
 from .utils import json_or_text
 
 log = logging.getLogger(__name__)
+
+
+class File:
+    __slots__ = ('fp', 'filename', '_original_pos', '_owner', '_closer')
+
+    def __init__(self, fp, filename=None, *, spoiler=False):
+        self.fp = fp
+
+        if isinstance(fp, io.IOBase):
+            if not (fp.seekable() and fp.readable()):
+                raise ValueError('File buffer {!r} must be seekable and readable'.format(fp))
+            self.fp = fp
+            self._original_pos = fp.tell()
+            self._owner = False
+        else:
+            self.fp = open(fp, 'rb')
+            self._original_pos = 0
+            self._owner = True
+
+        # aiohttp only uses two methods from IOBase
+        # read and close, since I want to control when the files
+        # close, I need to stub it so it doesn't close unless
+        # I tell it to
+        self._closer = self.fp.close
+        self.fp.close = lambda: None
+
+        if filename is None:
+            if isinstance(fp, str):
+                _, self.filename = os.path.split(fp)
+            else:
+                self.filename = getattr(fp, 'name', None)
+        else:
+            self.filename = filename
+
+        if spoiler and self.filename is not None and not self.filename.startswith('SPOILER_'):
+            self.filename = 'SPOILER_' + self.filename
+
+    def reset(self, *, seek=True):
+        # The `seek` parameter is needed because
+        # the retry-loop is iterated over multiple times
+        # starting from 0, as an implementation quirk
+        # the resetting must be done at the beginning
+        # before a request is done, since the first index
+        # is 0, and thus false, then this prevents an
+        # unnecessary seek since it's the first request
+        # done.
+        if seek:
+            self.fp.seek(self._original_pos)
+
+    def close(self):
+        self.fp.close = self._closer
+        if self._owner:
+            self._closer()
 
 
 class Route:
@@ -578,11 +633,31 @@ class HTTPClient:
 
     def execute_webhook(self, webhook_id, webhook_token, wait=False, **options):
         r = Route('POST', '/webhooks/{webhook_id}/{webhook_token}', webhook_id=webhook_id, webhook_token=webhook_token)
-        valid_keys = ("content", "username", "avatar_url", "tts", "file", "embeds", "allowed_mentions")
+        valid_keys = ("content", "username", "avatar_url", "tts", "embeds", "allowed_mentions")
         payload = {
             k: v for k, v in options.items() if k in valid_keys
         }
-        return self.request(r, json=payload, params={"wait": 'true' if wait else 'false'})
+
+        files = options.get("files", [])
+        print(files)
+        if len(files) > 0:
+            form = aiohttp.FormData()
+            form.add_field("payload_json", utils.to_json(payload))
+
+            if len(files) == 1:
+                file = files[0]
+                form.add_field('file', file.fp, filename=file.filename, content_type='application/octet-stream')
+
+            else:
+                for index, file in enumerate(files):
+                    form.add_field('file%s' % index, file.fp, filename=file.filename,
+                                   content_type='application/octet-stream')
+
+            print(form._fields)
+            return self.request(r, data=form, files=files, params={"wait": 'true' if wait else 'false'})
+
+        else:
+            return self.request(r, json=payload, params={"wait": 'true' if wait else 'false'})
 
     # Guild management
 
