@@ -5,7 +5,7 @@ from .enums import *
 from .permissions import Permissions, PermissionOverwrite
 
 DISCORD_EPOCH = 1420070400000
-DISCORD_CDN = "https://cdn.discord.com"
+DISCORD_CDN = "https://cdn.discordapp.com"
 
 
 def parse_time(timestamp):
