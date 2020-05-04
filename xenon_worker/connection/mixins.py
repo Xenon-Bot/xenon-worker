@@ -111,6 +111,10 @@ class HttpMixin:
         result = await self.http.send_message(channel.id, *args, **kwargs)
         return Message(result)
 
+    async def send_files(self, channel, *args, **kwargs):
+        result = await self.http.send_files(channel.id, *args, **kwargs)
+        return Message(result)
+
     async def edit_message(self, message, *args, **kwargs):
         result = await self.http.edit_message(message.channel_id, message.id, *args, **kwargs)
         return Message(result)
