@@ -49,7 +49,7 @@ class Formatter:
         title="Please Wait ...",
         color=0x36393e,
         icon="https://images-ext-1.discordapp.net/external/AzWR8HxPJ4t4rPA1DagxJkZsOCOMp4OTgwxL3QAjF4U/https/"
-             "cdn.discordapp.com/emojis/424900448663633920.gif"
+             "cdn.discord.com/emojis/424900448663633920.gif"
     )
     WAITING = Format(
         title="Waiting for Input ...",
