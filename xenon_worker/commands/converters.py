@@ -51,7 +51,7 @@ class MemberConverter(Converter):
 
 class GuildConverter(Converter):
     async def _convert(self, ctx):
-        guild = await ctx.get_guild()
+        guild = await ctx.bot.get_guild(self.arg)
         if guild is None:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
@@ -60,7 +60,7 @@ class GuildConverter(Converter):
 
 class FullGuildConverter(Converter):
     async def _convert(self, ctx):
-        guild = await ctx.get_full_guild()
+        guild = await ctx.bot.get_full_guild(self.arg)
         if guild is None:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
