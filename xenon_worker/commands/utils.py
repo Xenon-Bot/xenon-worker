@@ -1,4 +1,5 @@
 import asyncio
+from .. import DiscordException
 
 
 class ListMenu:
@@ -83,7 +84,10 @@ class ListMenu:
 
                 return
 
-            await self.update()
+            try:
+                await self.update()
+            except DiscordException:
+                break
 
 
 def invite_url(client_id, perms):
