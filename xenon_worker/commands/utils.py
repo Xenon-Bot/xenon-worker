@@ -1,5 +1,4 @@
 import asyncio
-from .. import DiscordException
 
 
 class ListMenu:
@@ -86,7 +85,9 @@ class ListMenu:
 
             try:
                 await self.update()
-            except DiscordException:
+            except asyncio.CancelledError:
+                raise
+            except Exception:
                 break
 
 
