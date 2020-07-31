@@ -7,6 +7,7 @@ from .formatter import Formatter, FormatRaise
 import traceback
 from .errors import *
 import sys
+import shlex
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -29,7 +30,11 @@ class RabbitBot(RabbitClient, CommandTable):
         super()._process_listeners(event, *args, **kwargs)
 
     async def process_commands(self, shard_id, msg):
-        parts = msg.content.split(" ")
+        try:
+            parts = shlex.split(msg.content)
+        except ValueError:
+            parts = msg.content.split(" ")
+
         try:
             parts, cmd = self.find_command(parts)
         except CommandNotFound:
@@ -42,7 +47,11 @@ class RabbitBot(RabbitClient, CommandTable):
             self.dispatch("command_error", cmd, ctx, e)
 
     async def invoke(self, ctx, cmd):
-        parts = cmd.split(" ")
+        try:
+            parts = shlex.split(cmd)
+        except ValueError:
+            parts = cmd.split(" ")
+
         try:
             parts, cmd = self.find_command(parts)
         except CommandNotFound:
