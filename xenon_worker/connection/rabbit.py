@@ -147,7 +147,6 @@ class RabbitClient(CacheMixin, HttpMixin):
 
             user_data = await self.http.static_login(token)
             self.user = User(user_data)
-            return
 
             self.connection = await aiormq.connect(self.url)
             self.channel = await self.connection.channel()
@@ -167,7 +166,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         except ConnectionError:
             traceback.print_exc()
             await asyncio.sleep(5)
-            return await self.start(shared_queue, *shared_subs)
+            return await self.start(token, shared_queue, *shared_subs)
 
     def run(self, *args, **kwargs):
         self.loop.create_task(self.start(*args, **kwargs))
