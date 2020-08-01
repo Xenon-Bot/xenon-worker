@@ -15,6 +15,11 @@ class Check:
 def has_permissions(**required):
     def predicate(callback):
         async def check(ctx, *args, **kwargs):
+            # Make sure we are in a guild
+            channel = await ctx.client.get_channel(ctx.channel_id)
+            if channel is None or channel.type == ChannelType.DM or channel.type == ChannelType.GROUP_DM:
+                return True
+
             guild = await ctx.get_full_guild()
             permissions = ctx.author.permissions_for_guild(guild)
             missing = []
@@ -35,6 +40,11 @@ def has_permissions(**required):
 def bot_has_permissions(**required):
     def predicate(callback):
         async def check(ctx, *args, **kwargs):
+            # Make sure we are in a guild
+            channel = await ctx.client.get_channel(ctx.channel_id)
+            if channel is None or channel.type == ChannelType.DM or channel.type == ChannelType.GROUP_DM:
+                return True
+
             bot_member = await ctx.get_bot_member()
             if bot_member is None:
                 raise BotMissingPermissions(required.keys())
