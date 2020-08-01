@@ -241,6 +241,9 @@ class HttpMixin:
     async def bot_gateway(self):
         return await self.http.request(Route('GET', '/gateway/bot'))
 
+    async def create_invite(self, channel, **kwargs):
+        return await self.http.create_invite(channel.id, **kwargs)
+
 
 class CacheMixin:
     async def get_full_guild(self, guild_id):
