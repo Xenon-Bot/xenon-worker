@@ -144,7 +144,11 @@ class Cooldown(Check):
 
     def get_key(self, ctx):
         if self.bucket == CooldownType.GUILD:
-            key = ctx.guild_id
+            if ctx.guild_id is not None:
+                key = ctx.guild_id
+
+            else:
+                key = ctx.channel_id
 
         elif self.bucket == CooldownType.CHANNEL:
             key = ctx.channel_id
