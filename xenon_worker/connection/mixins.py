@@ -323,10 +323,14 @@ class CacheMixin:
         }
 
     async def get_shards(self):
-        shards = await self.redis.hgetall("shards")
+        state = await self.get_state()
+        shard_count = state.get("shard_count", 1)
+
+        shards = await self.redis.mget(*[f"shards:{i}" for i in range(shard_count)])
         return {
-            k.decode("utf-8"): msgpack.unpackb(v)
-            for k, v in shards.items()
+            str(i): msgpack.unpackb(v)
+            for i, v in enumerate(shards)
+            if v is not None
         }
 
     async def guild_shard(self, guild_id):
