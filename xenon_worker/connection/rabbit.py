@@ -21,7 +21,7 @@ class Event:
 
 
 class RabbitClient(CacheMixin, HttpMixin):
-    def __init__(self, rabbit_url, mongo_url, redis_url, loop=None):
+    def __init__(self, rabbit_url, mongo_url, redis_url, redis_db, loop=None):
         super().__init__()
         self.url = rabbit_url
         self.user = None
@@ -31,6 +31,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         self.queue = None
         self.s_queue = None
         self.redis_url = redis_url
+        self.redis_db = redis_db
         self.redis = None
         self.listeners = {}
         self.static_subscriptions = set()
@@ -144,6 +145,7 @@ class RabbitClient(CacheMixin, HttpMixin):
         try:
             self.session = aiohttp.ClientSession(loop=self.loop)
             self.http.redis = self.redis = await aioredis.create_redis_pool(self.redis_url)
+            await self.redis.select(self.redis_db)
 
             user_data = await self.http.static_login(token)
             self.user = User(user_data)
