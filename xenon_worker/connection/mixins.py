@@ -137,6 +137,13 @@ class HttpMixin:
     def iter_messages(self, channel, limit=100, before=None, after=None, around=None):
         return MessageIterator(self, channel.id, limit, before, after, around)
 
+    async def fetch_pins(self, channel):
+        result = await self.http.pins_from(channel.id)
+        return [Message(r) for r in result]
+
+    async def pin_message(self, message):
+        return await self.http.pin_message(message.channel_id, message.id)
+
     async def start_dm(self, user):
         result = await self.http.start_private_message(user.id)
         return Channel(result)
