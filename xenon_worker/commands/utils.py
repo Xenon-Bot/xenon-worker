@@ -25,22 +25,34 @@ class ListMenu:
         else:
             await self.ctx.client.edit_message(self.msg, embed=self.make_embed(items))
 
+        if len(items) == 0 and self.page == 0:
+            # If the first page doesn't contain any backups, there is no need to keep up the pagination
+            raise asyncio.CancelledError
+
     def make_embed(self, items):
-        return {
-            "title": "List",
-            "fields": [
-                {
-                    "name": name,
-                    "value": value,
-                    "inline": False
-                }
-                for name, value in items
-            ],
-            "footer": {
-                "text": f"Page {self.page + 1}"
-            },
-            **self.embed_kwargs
-        }
+        if len(items) > 0:
+            return {
+                "title": "List",
+                "fields": [
+                    {
+                        "name": name,
+                        "value": value,
+                        "inline": False
+                    }
+                    for name, value in items
+                ],
+                "footer": {
+                    "text": f"Page {self.page + 1}"
+                },
+                **self.embed_kwargs
+            }
+
+        else:
+            return {
+                "title": "List",
+                "description": "Nothing to display",
+                **self.embed_kwargs
+            }
 
     async def start(self):
         await self.update()
@@ -75,20 +87,12 @@ class ListMenu:
                 else:
                     raise asyncio.TimeoutError
 
-            except asyncio.TimeoutError:
+                await self.update()
+            finally:
                 try:
                     await self.ctx.client.clear_reactions(self.msg)
                 except Exception:
                     pass
-
-                return
-
-            try:
-                await self.update()
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                break
 
 
 def invite_url(client_id, perms):
