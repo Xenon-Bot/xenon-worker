@@ -88,6 +88,10 @@ class ListMenu:
                     raise asyncio.TimeoutError
 
                 await self.update()
+
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                return
+
             finally:
                 try:
                     await self.ctx.client.clear_reactions(self.msg)
