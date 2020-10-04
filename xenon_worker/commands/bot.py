@@ -8,6 +8,7 @@ import traceback
 from .errors import *
 import sys
 import shlex
+import asyncio
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -60,6 +61,9 @@ class RabbitBot(RabbitClient, CommandTable):
         await cmd.execute(ctx, parts)
 
     async def on_command_error(self, _, cmd, ctx, e):
+        if isinstance(e, asyncio.CancelledError):
+            return
+
         if isinstance(e, FormatRaise):
             await ctx.f_send(*e.args, **e.kwargs, f=e.f)
 
