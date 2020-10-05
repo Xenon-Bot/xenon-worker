@@ -81,6 +81,13 @@ class RabbitBot(RabbitClient, CommandTable):
             name = e.parameter.converter.__name__
             name = name.replace("Converter", "")
 
+            common_types = {
+                "int": "number",
+                "float": "decimal number",
+                "str": "text"
+            }
+            name = common_types.get(name, name)
+
             await ctx.f_send(
                 f"The **value `{e.value}`** passed to `{e.parameter.name}` is **not a valid `{name}`**",
                 f=self.f.ERROR
