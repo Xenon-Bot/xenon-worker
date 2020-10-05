@@ -23,9 +23,10 @@ def has_permissions(**required):
             guild = await ctx.get_full_guild()
             permissions = ctx.author.permissions_for_guild(guild)
             missing = []
-            for perm in required.keys():
-                if not getattr(permissions, perm, False):
-                    missing.append(perm)
+            if not permissions.administrator:
+                for perm in required.keys():
+                    if not getattr(permissions, perm, False):
+                        missing.append(perm)
 
             if len(missing) > 0:
                 raise MissingPermissions(missing)
@@ -52,9 +53,10 @@ def bot_has_permissions(**required):
             guild = await ctx.get_full_guild()
             permissions = bot_member.permissions_for_guild(guild)
             missing = []
-            for perm in required.keys():
-                if not getattr(permissions, perm, False):
-                    missing.append(perm)
+            if not permissions.administrator:
+                for perm in required.keys():
+                    if not getattr(permissions, perm, False):
+                        missing.append(perm)
 
             if len(missing) > 0:
                 raise BotMissingPermissions(missing)
