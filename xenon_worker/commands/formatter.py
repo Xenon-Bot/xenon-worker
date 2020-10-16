@@ -43,7 +43,7 @@ class Formatter:
         title="Error",
         color=0xc64935,
         icon="https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678069-sign-error-512.png",
-        extra="\n\n[Support](https://discord.club/discord)"
+        extra="\n\n[Support](https://xenon.bot/support) | [FAQ](https://wiki.xenon.bot/faq)"
     )
     WORKING = Format(
         title="Please Wait ...",
