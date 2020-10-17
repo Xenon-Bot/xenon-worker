@@ -631,8 +631,15 @@ class HTTPClient:
         }
         return self.request(Route('POST', '/channels/{channel_id}/followers', channel_id=channel_id), json=payload)
 
-    def execute_webhook(self, webhook_id, webhook_token, wait=False, **options):
-        r = Route('POST', '/webhooks/{webhook_id}/{webhook_token}', webhook_id=webhook_id, webhook_token=webhook_token)
+    def execute_webhook(self, webhook_id, webhook_token, message_id=None, wait=False, **options):
+        if message_id is None:
+            r = Route('POST', '/webhooks/{webhook_id}/{webhook_token}', webhook_id=webhook_id,
+                      webhook_token=webhook_token)
+
+        else:
+            r = Route('PATCH', '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
+                      webhook_id=webhook_id, webhook_token=webhook_token, message_id=message_id)
+
         valid_keys = ("content", "username", "avatar_url", "tts", "embeds", "allowed_mentions")
         payload = {
             k: v for k, v in options.items() if k in valid_keys
@@ -656,6 +663,11 @@ class HTTPClient:
 
         else:
             return self.request(r, json=payload, params={"wait": 'true' if wait else 'false'})
+
+    def delete_webhook_message(self, webhook_id, webhook_token, message_id):
+        r = Route('DELETE', '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
+                  webhook_id=webhook_id, webhook_token=webhook_token, message_id=message_id)
+        return self.request(r)
 
     # Guild management
 

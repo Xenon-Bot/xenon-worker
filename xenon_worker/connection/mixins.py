@@ -176,6 +176,12 @@ class HttpMixin:
     async def edit_member(self, guild, member, *args, **kwargs):
         return await self.http.edit_member(guild.id, member.id, *args, **kwargs)
 
+    async def add_role(self, guild, member, role, **kwargs):
+        return await self.http.add_role(guild.id, member.id, role.id, **kwargs)
+
+    async def remove_role(self, guild, member, role, **kwargs):
+        return await self.http.remove_role(guild.id, member.id, role.id, **kwargs)
+
     def iter_members(self, guild, limit=1000, after=None):
         return MemberIterator(self, guild, limit, after)
 
@@ -217,6 +223,9 @@ class HttpMixin:
 
         else:
             return None
+
+    async def delete_webhook_message(self, webhook, *args, **kwargs):
+        return await self.http.delete_webhook_message(webhook.id, webhook.token, *args, **kwargs)
 
     async def create_channel(self, guild, *args, **kwargs):
         result = await self.http.create_channel(guild.id, *args, **kwargs)
