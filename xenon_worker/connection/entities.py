@@ -240,7 +240,7 @@ class Guild(Entity):
 
 class Message(Entity):
     def _preprocess(self, data):
-        self.type = MessageType(data["type"])
+        self.type = MessageType(data.get("type") or 0)
         self.timestamp = parse_time(data["timestamp"])
         # self.mentions
         # self.mention_roles

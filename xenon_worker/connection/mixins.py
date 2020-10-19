@@ -224,8 +224,8 @@ class HttpMixin:
         else:
             return None
 
-    async def delete_webhook_message(self, webhook, *args, **kwargs):
-        return await self.http.delete_webhook_message(webhook.id, webhook.token, *args, **kwargs)
+    async def delete_webhook_message(self, webhook, msg):
+        return await self.http.delete_webhook_message(webhook.id, webhook.token, msg.id)
 
     async def create_channel(self, guild, *args, **kwargs):
         result = await self.http.create_channel(guild.id, *args, **kwargs)
