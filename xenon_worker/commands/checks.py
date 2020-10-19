@@ -107,7 +107,7 @@ def guild_only(callback):
             # Probably a DM channel
             raise NotAGuildChannel()
 
-        if channel.type != ChannelType.GUILD_TEXT:
+        if channel.type not in (ChannelType.GUILD_TEXT, ChannelType.GUILD_NEWS):
             raise NotAGuildChannel()
 
         return True
