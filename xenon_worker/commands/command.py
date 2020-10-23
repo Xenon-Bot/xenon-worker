@@ -1,4 +1,4 @@
-from inspect import cleandoc, getdoc, Parameter, signature, ismethod, isawaitable
+from inspect import cleandoc, getdoc, Parameter, signature, isclass, isawaitable
 from abc import ABC
 
 from .checks import Check, Cooldown
@@ -159,7 +159,7 @@ class CommandParameter:
             converter = self.converter or str
             arg = args.pop(0)
 
-        if issubclass(converter, Converter):
+        if isclass(converter) and issubclass(converter, Converter):
             return converter(self, arg)
 
         else:
