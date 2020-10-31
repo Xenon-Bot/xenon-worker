@@ -608,6 +608,10 @@ class HTTPClient:
         r = Route('POST', '/channels/{channel_id}/webhooks', channel_id=channel_id)
         return self.request(r, json=payload, reason=reason)
 
+    def edit_webhook(self, webhook_id, *, reason=None, **kwargs):
+        r = Route('PATCH', '/webhooks/{webhook_id}', webhook_id=webhook_id)
+        return self.request(r, json=kwargs, reason=reason)
+
     def delete_webhook(self, webhook_id, webhook_token):
         return self.request(Route(
             'DELETE',
@@ -728,7 +732,7 @@ class HTTPClient:
         return self.request(Route('PATCH', '/guilds/{guild_id}/vanity-url', guild_id=guild_id), json=payload,
                             reason=reason)
 
-    def get_all_guild_channels(self, guild_id):
+    def get_guild_channels(self, guild_id):
         return self.request(Route('GET', '/guilds/{guild_id}/channels', guild_id=guild_id))
 
     def get_members(self, guild_id, limit, after):

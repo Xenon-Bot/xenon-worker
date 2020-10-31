@@ -2,6 +2,7 @@ from .entities import *
 import msgpack
 from .httpd import Route
 import asyncio
+from .errors import *
 
 
 class MemberIterator:
@@ -165,6 +166,9 @@ class HttpMixin:
         result = await self.http.get_member(guild.id, member_id)
         return Member(result)
 
+    def fetch_bot_member(self, guild):
+        return self.fetch_member(guild, self.user.id)
+
     async def fetch_members(self, guild, limit=1000, after=None):
         """
         Only works for up to 1000 members. See iter_members
@@ -189,9 +193,26 @@ class HttpMixin:
         result = await self.http.get_roles(guild.id)
         return [Role(r) for r in result]
 
+    async def fetch_role(self, guild, role_id):
+        roles = await self.fetch_roles(guild)
+        for role in roles:
+            if role.id == role_id:
+                return role
+
+        raise NotFound  # Keep it consistent
+
+    async def fetch_full_guild(self, guild_id):
+        result = await self.http.get_guild(guild_id)
+        result["channels"] = await self.http.get_guild_channels(guild_id)
+        return Guild(result)
+
     async def fetch_guild(self, guild_id):
         result = await self.http.get_guild(guild_id)
-        return Channel(result)
+        return Guild(result)
+
+    async def fetch_guild_channels(self, guild_id):
+        result = await self.http.get_guild_channels(guild_id)
+        return [Channel(c) for c in result]
 
     async def fetch_bans(self, guild):
         return await self.http.get_bans(guild.id)
@@ -211,6 +232,10 @@ class HttpMixin:
 
     async def create_webhook(self, channel, *args, **kwargs):
         result = await self.http.create_webhook(channel.id, *args, **kwargs)
+        return Webhook(result)
+
+    async def edit_webhook(self, webhook, *args, **kwargs):
+        result = await self.http.edit_webhook(webhook.id, *args, **kwargs)
         return Webhook(result)
 
     async def delete_webhook(self, webhook):
@@ -270,6 +295,17 @@ class CacheMixin:
         data = {
             **msgpack.unpackb(data),
             "channels": [c.to_dict() for c in await self.get_guild_channels(guild_id)],
+            "roles": [r.to_dict() for r in await self.get_guild_roles(guild_id)]
+        }
+        return Guild(data)
+
+    async def get_guild_with_roles(self, guild_id):
+        data = await self.redis.hget(f"guilds", guild_id)
+        if data is None:
+            return None
+
+        data = {
+            **msgpack.unpackb(data),
             "roles": [r.to_dict() for r in await self.get_guild_roles(guild_id)]
         }
         return Guild(data)

@@ -1,5 +1,6 @@
 from .errors import *
 from ..connection.entities import Snowflake
+from ..connection.errors import *
 import re
 
 
@@ -51,8 +52,9 @@ class MemberConverter(Converter):
 
 class GuildConverter(Converter):
     async def _convert(self, ctx):
-        guild = await ctx.bot.get_guild(self.arg)
-        if guild is None:
+        try:
+            guild = await ctx.bot.fetch_guild(self.arg)
+        except NotFound:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
         return guild
@@ -60,8 +62,9 @@ class GuildConverter(Converter):
 
 class FullGuildConverter(Converter):
     async def _convert(self, ctx):
-        guild = await ctx.bot.get_full_guild(self.arg)
-        if guild is None:
+        try:
+            guild = await ctx.bot.fetch_full_guild(self.arg)
+        except NotFound:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
         return guild
@@ -76,7 +79,7 @@ class ChannelConverter(Converter):
         else:
             channel_id = self.arg
 
-        channel = await ctx.bot.get_channel(channel_id)
+        channel = await ctx.bot.fetch_channel(channel_id)
         if channel is None:
             raise ConverterFailed(self.parameter, self.arg, "Channel not found")
 
@@ -92,7 +95,7 @@ class RoleConverter(Converter):
         else:
             role_id = self.arg
 
-        role = await ctx.bot.get_role(role_id)
+        role = await ctx.bot.fetch_role(Snowflake(ctx.guild_id), role_id)
         if role is None:
             raise ConverterFailed(self.parameter, self.arg, "Role not found")
 
