@@ -27,7 +27,7 @@ class UserConverter(Converter):
                 user_id = self.arg
 
             user = await ctx.bot.fetch_user(user_id)
-        except Exception:
+        except DiscordException:
             raise ConverterFailed(self.parameter, self.arg, "User not found")
 
         return user
@@ -44,7 +44,7 @@ class MemberConverter(Converter):
                 member_id = self.arg
 
             member = await ctx.bot.fetch_member(Snowflake(ctx.guild_id), member_id)
-        except Exception:
+        except DiscordException:
             raise ConverterFailed(self.parameter, self.arg, "Member not found")
 
         return member
@@ -54,7 +54,7 @@ class GuildConverter(Converter):
     async def _convert(self, ctx):
         try:
             guild = await ctx.bot.fetch_guild(self.arg)
-        except NotFound:
+        except DiscordException:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
         return guild
@@ -64,7 +64,7 @@ class FullGuildConverter(Converter):
     async def _convert(self, ctx):
         try:
             guild = await ctx.bot.fetch_full_guild(self.arg)
-        except NotFound:
+        except DiscordException:
             raise ConverterFailed(self.parameter, self.arg, "Guild not found")
 
         return guild
@@ -79,8 +79,9 @@ class ChannelConverter(Converter):
         else:
             channel_id = self.arg
 
-        channel = await ctx.bot.fetch_channel(channel_id)
-        if channel is None:
+        try:
+            channel = await ctx.bot.fetch_channel(channel_id)
+        except DiscordException:
             raise ConverterFailed(self.parameter, self.arg, "Channel not found")
 
         return channel
@@ -95,8 +96,9 @@ class RoleConverter(Converter):
         else:
             role_id = self.arg
 
-        role = await ctx.bot.fetch_role(Snowflake(ctx.guild_id), role_id)
-        if role is None:
+        try:
+            role = await ctx.bot.fetch_role(Snowflake(ctx.guild_id), role_id)
+        except DiscordException:
             raise ConverterFailed(self.parameter, self.arg, "Role not found")
 
         return role
