@@ -369,10 +369,14 @@ class CacheMixin:
 
     async def get_state(self):
         state = await self.redis.hgetall("state")
-        return {
-            k.decode("utf-8"): msgpack.unpackb(v)
-            for k, v in state.items()
-        }
+        result = {}
+        for k,v in state.items():
+            try:
+                result[k.decode("utf-8")] = msgpack.unpackb(v)
+            except Exception:
+                pass
+
+        return result
 
     async def get_shards(self):
         state = await self.get_state()
