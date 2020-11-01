@@ -198,7 +198,11 @@ class Guild(Entity):
         self.default_message_notifications = DefaultMessageNotifications(data["default_message_notifications"])
         self.explicit_content_filter = ExplicitContentFilter(data["explicit_content_filter"])
         self.mfa_level = MFALevel(data["mfa_level"])
-        self.roles = [Role(d) for d in data.get("roles", [])]
+        self.roles = []
+        for role in data.get("roles", []):
+            role["guild_id"] = data["id"]
+            self.roles.append(Role(role))
+
         # self.emojis =
         self.members = [Member(d) for d in data.get("members", [])]
         self.channels = [Channel(d) for d in data.get("channels", [])]
