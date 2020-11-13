@@ -211,7 +211,9 @@ class HTTPClient:
                     for f in files:
                         f.reset(seek=tries)
 
+                await self.redis.incr(f"request:{route.path}")
                 async with self.__session.request(method, url, **kwargs) as r:
+                    await self.redis.incr(f"response:{r.status}")
                     log.debug('%s %s with %s has returned %s', method, url, kwargs.get('data'), r.status)
 
                     # even errors have text involved in them so this is safe to call
