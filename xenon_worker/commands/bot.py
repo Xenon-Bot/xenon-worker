@@ -42,6 +42,8 @@ class RabbitBot(RabbitClient, CommandTable):
         except CommandNotFound:
             return
 
+        await self.redis.hincrby("commands", cmd.full_name, 1)
+
         blacklist_key = msg.author.id if msg.guild_id is None else msg.guild_id
         is_blacklisted = await self.redis.get(f"blacklist:{blacklist_key}")
         if is_blacklisted is not None:
