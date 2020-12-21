@@ -9,6 +9,7 @@ from .errors import *
 import sys
 import shlex
 import asyncio
+import random
 
 
 class RabbitBot(RabbitClient, CommandTable):
@@ -41,6 +42,10 @@ class RabbitBot(RabbitClient, CommandTable):
         except CommandNotFound:
             return
 
+        is_blacklisted = await self.redis.get(f"blacklist:{msg.author.id}")
+        if is_blacklisted is not None:
+            return
+
         ctx = Context(self, shard_id, msg)
         try:
             await cmd.execute(ctx, parts)
@@ -61,6 +66,15 @@ class RabbitBot(RabbitClient, CommandTable):
         await cmd.execute(ctx, parts)
 
     async def on_command_error(self, _, cmd, ctx, e):
+        errors_count = int(await self.redis.get(f"errors:{ctx.author.id}") or 0)
+        if errors_count > 10:
+            # temp silent blacklist
+            await self.redis.setex(f"blacklist:{ctx.author.id}", random.randint(60 * 15, 60 * 30), 1)
+            return
+
+        else:
+            await self.redis.setex(f"errors:{ctx.author.id}", random.randint(5, 15), errors_count + 1)
+
         if isinstance(e, asyncio.CancelledError):
             return
 
