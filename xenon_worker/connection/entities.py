@@ -61,7 +61,7 @@ class Entity(Snowflake):
 
 class Role(Entity):
     def _preprocess(self, data):
-        self.permissions = Permissions(data["permissions"])
+        self.permissions = Permissions(int(data["permissions"]))
 
     def is_default(self):
         return self.position == 0
@@ -78,8 +78,8 @@ class Channel(Entity):
             (
                 overwrite["id"],
                 PermissionOverwrite.from_pair(
-                    Permissions(overwrite["allow"]),
-                    Permissions(overwrite["deny"])
+                    Permissions(int(overwrite["allow"])),
+                    Permissions(int(overwrite["deny"]))
                 )
             )
             for overwrite in data.get("permission_overwrites", [])
@@ -193,7 +193,7 @@ class Guild(Entity):
                  "premium_tier", "premium_subscription_count", "preferred_locale")
 
     def _preprocess(self, data):
-        self.permissions = Permissions(data.get("permissions")) if data.get("permissions") is not None else None
+        self.permissions = Permissions(int(data["permissions"])) if data.get("permissions") is not None else None
         self.verification_level = VerificationLevel(data["verification_level"])
         self.default_message_notifications = DefaultMessageNotifications(data["default_message_notifications"])
         self.explicit_content_filter = ExplicitContentFilter(data["explicit_content_filter"])

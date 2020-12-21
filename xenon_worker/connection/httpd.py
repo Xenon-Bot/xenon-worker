@@ -6,6 +6,7 @@ import sys
 import os.path
 import io
 import weakref
+import time
 
 import aiohttp
 
@@ -69,7 +70,7 @@ class File:
 
 
 class Route:
-    BASE = 'https://discord.com/api/v7'
+    BASE = 'https://discord.com/api/v8'
 
     def __init__(self, method, path, **parameters):
         self.path = path
@@ -114,6 +115,7 @@ class HTTPClient:
         self.global_over = asyncio.Event()
         self.global_over.set()
         self.ratelimits = weakref.WeakValueDictionary()
+        self.semaphore = asyncio.Semaphore(value=10)
 
         user_agent = 'DiscordBot (https://github.com/Magic-Bots/xenon-worker) Python/{0[0]}.{0[1]} aiohttp/{1}'
         self.user_agent = user_agent.format(sys.version_info, aiohttp.__version__)
@@ -169,6 +171,8 @@ class HTTPClient:
             if not self.global_over.is_set():
                 await self.global_over.wait()
 
+            await self.semaphore.acquire()
+
             await lock.acquire()
             unlock = True
 
@@ -188,7 +192,7 @@ class HTTPClient:
                         remaining = r.headers.get('X-Ratelimit-Remaining')
                         if remaining == "0":
                             delta = utils._parse_ratelimit_header(r, use_clock=False)
-                            log.warning('A rate limit bucket has been exhausted (bucket: %s, retry: %s).', bucket,
+                            log.info('A rate limit bucket has been exhausted (bucket: %s, retry: %s).', bucket,
                                         delta)
                             self.loop.call_later(delta, lock.release)
                             unlock = False
@@ -197,15 +201,13 @@ class HTTPClient:
 
                     # we are being rate limited
                     elif r.status == 429:
+                        await self.redis.hincrby(f"429", route.path, 1)
                         if not r.headers.get('Via'):
                             # Banned by Cloudflare more than likely.
                             raise HTTPException(r, data)
 
-                        fmt = 'We are being rate limited. Retrying in %.2f seconds. Handled under the bucket "%s"'
-
                         # sleep a bit
                         retry_after = data['retry_after']
-                        log.warning(fmt, retry_after, bucket)
 
                         # check if it's a global rate limit
                         is_global = data.get('global', False)
@@ -215,6 +217,10 @@ class HTTPClient:
                             self.loop.call_later(retry_after, self.global_over.set)
 
                         else:
+                            log.warning(
+                                'We are being rate limited. Retrying in %.2f seconds. Handled under the bucket "%s"',
+                                retry_after, bucket
+                            )
                             self.loop.call_later(retry_after, lock.release)
                             unlock = False
 
@@ -233,6 +239,7 @@ class HTTPClient:
                     else:
                         raise HTTPException(r, data)
             finally:
+                self.semaphore.release()
                 if unlock and lock.locked():
                     lock.release()
 

@@ -52,13 +52,13 @@ class RabbitBot(RabbitClient, CommandTable):
             return
 
         cmd_count = int(await self.redis.get(f"commands:{bucket}") or 0)
-        if cmd_count > 20:
+        if cmd_count > 5:
             # temp silent blacklist
             await self.redis.setex(f"blacklist:{bucket}", random.randint(60 * 15, 60 * 60), 1)
             return
 
         else:
-            await self.redis.setex(f"commands:{bucket}", 5, cmd_count + 1)
+            await self.redis.setex(f"commands:{bucket}", 2, cmd_count + 1)
 
         ctx = Context(self, shard_id, msg)
         try:
@@ -163,10 +163,10 @@ class RabbitBot(RabbitClient, CommandTable):
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             print(tb, file=sys.stderr)
             await ctx.f_send(f"```py\n{e.__class__.__name__}:\n{str(e)}\n```", f=self.f.ERROR)
-            try:
-                await ctx.f_send(f"```py\n{tb}```", f=self.f.ERROR)
-            except:
-                pass
+            # try:
+            #     await ctx.f_send(f"```py\n{tb}```", f=self.f.ERROR)
+            # except:
+            #     pass
 
     async def on_command(self, shard_id, data):
         msg = Message(data)
