@@ -5,6 +5,7 @@ from . import utils
 import sys
 import os.path
 import io
+import weakref
 
 import aiohttp
 
@@ -94,48 +95,6 @@ class Route:
             return '{0.channel_id}:{0.guild_id}:{0.path}'.format(self)
 
 
-class MaybeUnlock:
-    def __init__(self, lock):
-        self.lock = lock
-        self._unlock = True
-
-    async def __aenter__(self):
-        return self
-
-    def defer(self):
-        self._unlock = False
-
-    async def __aexit__(self, type, value, traceback):
-        if self._unlock:
-            await self.lock.release()
-
-
-class RatelimitLock:
-    def __init__(self, redis, bucket):
-        self.redis = redis
-        self.bucket = bucket
-
-    @property
-    def key(self):
-        return "ratelimit:" + self.bucket
-
-    async def acquire(self):
-        while True:
-            delta = await self.redis.pttl(self.key)
-            if delta == -2:  # Key does not exist
-                # 10 second ttl to avoid deadlock
-                return await self.redis.setex(self.key, 3, 1)
-
-            else:
-                await asyncio.sleep(delta / 1000)
-
-    async def release_in(self, delta):
-        return await self.redis.setex(self.key, delta, 1)
-
-    async def release(self):
-        return await self.redis.delete(self.key)
-
-
 class HTTPClient:
     """Represents an HTTP client sending HTTP requests to the Discord API."""
 
@@ -152,6 +111,10 @@ class HTTPClient:
         self.token = None
         self.redis = None
 
+        self.global_over = asyncio.Event()
+        self.global_over.set()
+        self.ratelimits = weakref.WeakValueDictionary()
+
         user_agent = 'DiscordBot (https://github.com/Magic-Bots/xenon-worker) Python/{0[0]}.{0[1]} aiohttp/{1}'
         self.user_agent = user_agent.format(sys.version_info, aiohttp.__version__)
 
@@ -164,12 +127,9 @@ class HTTPClient:
         method = route.method
         url = route.url
 
-        lock = RatelimitLock(self.redis, bucket)
-
         # header creation
         headers = {
             'User-Agent': self.user_agent,
-            'X-Ratelimit-Precision': 'millisecond',
             'Authorization': 'Bot ' + self.token
         }
 
@@ -194,23 +154,25 @@ class HTTPClient:
         if self.proxy_auth is not None:
             kwargs['proxy_auth'] = self.proxy_auth
 
-        # Check if global rate limit was hit
-        while True:
-            delta = await self.redis.pttl("ratelimit:global")
-            if delta < 0:
-                # Key does not exist or key has no ttl
-                break
+        if route.bucket in self.ratelimits:
+            lock = self.ratelimits[route.bucket]
 
-            await asyncio.sleep(delta / 1000)
+        else:
+            lock = self.ratelimits[route.bucket] = asyncio.Lock()
 
         # Check if bucket ratelimit was hit and acquire the lock
-        await lock.acquire()
-        async with MaybeUnlock(lock) as maybe_lock:
-            for tries in range(5):
-                if files:
-                    for f in files:
-                        f.reset(seek=tries)
+        for tries in range(5):
+            if files:
+                for f in files:
+                    f.reset(seek=tries)
 
+            if not self.global_over.is_set():
+                await self.global_over.wait()
+
+            await lock.acquire()
+            unlock = True
+
+            try:
                 await self.redis.hincrby(f"requests", f"{route.method}:{route.path}", 1)
                 async with self.__session.request(method, url, **kwargs) as r:
                     await self.redis.hincrby(f"responses", str(r.status), 1)
@@ -219,22 +181,22 @@ class HTTPClient:
                     # even errors have text involved in them so this is safe to call
                     data = await json_or_text(r)
 
-                    # check if we have rate limit header information
-                    remaining = r.headers.get('X-Ratelimit-Remaining')
-                    if remaining == '0' and r.status != 429:
-                        # we've depleted our current bucket
-                        delta = utils._parse_ratelimit_header(r, use_clock=self.use_clock)
-                        log.info('A rate limit bucket has been exhausted (bucket: %s, retry: %s).', bucket, delta)
-                        maybe_lock.defer()
-                        await lock.release_in(delta)
-
                     # the request was successful so just return the text/json
                     if 300 > r.status >= 200:
                         log.debug('%s %s has received %s', method, url, data)
+
+                        remaining = r.headers.get('X-Ratelimit-Remaining')
+                        if remaining == "0":
+                            delta = utils._parse_ratelimit_header(r, use_clock=False)
+                            log.warning('A rate limit bucket has been exhausted (bucket: %s, retry: %s).', bucket,
+                                        delta)
+                            self.loop.call_later(delta, lock.release)
+                            unlock = False
+
                         return data
 
                     # we are being rate limited
-                    if r.status == 429:
+                    elif r.status == 429:
                         if not r.headers.get('Via'):
                             # Banned by Cloudflare more than likely.
                             raise HTTPException(r, data)
@@ -242,23 +204,24 @@ class HTTPClient:
                         fmt = 'We are being rate limited. Retrying in %.2f seconds. Handled under the bucket "%s"'
 
                         # sleep a bit
-                        retry_after = data['retry_after'] / 1000.0
+                        retry_after = data['retry_after']
                         log.warning(fmt, retry_after, bucket)
-                        await lock.release_in(retry_after)
 
                         # check if it's a global rate limit
                         is_global = data.get('global', False)
                         if is_global:
                             log.warning('Global rate limit has been hit. Retrying in %.2f seconds.', retry_after)
-                            await self.redis.setex("ratelimit:global", retry_after, 1)
+                            self.global_over.clear()
+                            self.loop.call_later(retry_after, self.global_over.set)
 
-                        await asyncio.sleep(retry_after)
-                        log.debug('Done sleeping for the rate limit. Retrying...')
+                        else:
+                            self.loop.call_later(retry_after, lock.release)
+                            unlock = False
 
                         continue
 
                     # we've received a 500 or 502, unconditional retry
-                    if r.status in {500, 502}:
+                    elif r.status in {500, 502}:
                         await asyncio.sleep(1 + tries * 2)
                         continue
 
@@ -269,9 +232,12 @@ class HTTPClient:
                         raise NotFound(r, data)
                     else:
                         raise HTTPException(r, data)
+            finally:
+                if unlock and lock.locked():
+                    lock.release()
 
-            # We've run out of retries, raise.
-            raise HTTPException(r, data)
+        # We've run out of retries, raise.
+        raise HTTPException(r, data)
 
     async def get_from_cdn(self, url):
         async with self.__session.get(url) as resp:
