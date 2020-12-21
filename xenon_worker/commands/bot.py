@@ -44,10 +44,21 @@ class RabbitBot(RabbitClient, CommandTable):
 
         await self.redis.hincrby("commands", cmd.full_name, 1)
 
-        blacklist_key = msg.author.id if msg.guild_id is None else msg.guild_id
-        is_blacklisted = await self.redis.get(f"blacklist:{blacklist_key}")
+        bucket = msg.guild_id or msg.author.id
+
+        is_blacklisted = await self.redis.get(f"blacklist:{bucket}")
         if is_blacklisted is not None:
+            await self.redis.setex(f"blacklist:{bucket}", random.randint(60 * 15, 60 * 60), 1)
             return
+
+        cmd_count = int(await self.redis.get(f"commands:{bucket}") or 0)
+        if cmd_count > 20:
+            # temp silent blacklist
+            await self.redis.setex(f"blacklist:{bucket}", random.randint(60 * 15, 60 * 60), 1)
+            return
+
+        else:
+            await self.redis.setex(f"commands:{bucket}", 5, cmd_count + 1)
 
         ctx = Context(self, shard_id, msg)
         try:
@@ -79,17 +90,7 @@ class RabbitBot(RabbitClient, CommandTable):
         elif isinstance(e, CommandNotFound):
             return
 
-        errors_count = int(await self.redis.get(f"errors:{ctx.author.id}") or 0)
-        if errors_count > 10:
-            # temp silent blacklist
-            blacklist_key = ctx.author.id if ctx.msg.guild_id is None else ctx.msg.guild_id
-            await self.redis.setex(f"blacklist:{blacklist_key}", random.randint(60 * 60, 60 * 60 * 3), 1)
-            return
-
-        else:
-            await self.redis.setex(f"errors:{ctx.author.id}", random.randint(5, 15), errors_count + 1)
-
-        if isinstance(e, NotEnoughArguments):
+        elif isinstance(e, NotEnoughArguments):
             await ctx.f_send(
                 f"The command `{cmd.full_name}` is **missing the `{e.parameter.name}` argument**.\n"
                 f"Use `{self.prefix}help {cmd.full_name}` to get more information.",
