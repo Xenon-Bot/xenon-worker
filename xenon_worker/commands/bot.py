@@ -42,7 +42,8 @@ class RabbitBot(RabbitClient, CommandTable):
         except CommandNotFound:
             return
 
-        is_blacklisted = await self.redis.get(f"blacklist:{msg.author.id}")
+        blacklist_key = msg.author.id if msg.guild_id is None else msg.guild_id
+        is_blacklisted = await self.redis.get(f"blacklist:{blacklist_key}")
         if is_blacklisted is not None:
             return
 
@@ -79,7 +80,8 @@ class RabbitBot(RabbitClient, CommandTable):
         errors_count = int(await self.redis.get(f"errors:{ctx.author.id}") or 0)
         if errors_count > 10:
             # temp silent blacklist
-            await self.redis.setex(f"blacklist:{ctx.author.id}", random.randint(60 * 60, 60 * 60 * 3), 1)
+            blacklist_key = ctx.author.id if ctx.msg.guild_id is None else ctx.msg.guild_id
+            await self.redis.setex(f"blacklist:{blacklist_key}", random.randint(60 * 60, 60 * 60 * 3), 1)
             return
 
         else:
