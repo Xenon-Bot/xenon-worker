@@ -171,6 +171,13 @@ class Cooldown(Check):
         current = int(await ctx.bot.redis.get(key) or 0)
         if current >= self.rate:
             remaining = await ctx.bot.redis.ttl(key)
+            # warned key must include the user id even if the cooldown is global
+            warned_key = f"{key}:{ctx.author.id}:warned"
+            already_warned = await ctx.bot.redis.get(warned_key)
+            if already_warned is not None:
+                raise CommandOnCooldown(self.rate, self.per, self.bucket, remaining, warned=True)
+
+            await ctx.bot.redis.setex(warned_key, self.per, 1)
             raise CommandOnCooldown(self.rate, self.per, self.bucket, remaining)
 
         await ctx.bot.redis.setex(key, self.per, current + 1)

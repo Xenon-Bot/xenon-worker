@@ -49,9 +49,10 @@ class NotADMChannel(CheckFailed):
 
 
 class CommandOnCooldown(CheckFailed):
-    def __init__(self, rate, per, bucket, remaining):
+    def __init__(self, rate, per, bucket, remaining, warned=False):
         self.per = per
         self.rate = rate
         self.bucket = bucket
         self.remaining = remaining
+        self.warned = warned
 

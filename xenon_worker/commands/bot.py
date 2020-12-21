@@ -130,6 +130,9 @@ class RabbitBot(RabbitClient, CommandTable):
             )
 
         elif isinstance(e, CommandOnCooldown):
+            if e.warned:
+                return
+
             await ctx.f_send(
                 f"This **command** is currently on **cooldown**.\n"
                 f"You have to **wait `{e.remaining}` seconds** until you can use it again.",
