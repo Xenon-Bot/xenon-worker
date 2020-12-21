@@ -66,25 +66,26 @@ class RabbitBot(RabbitClient, CommandTable):
         await cmd.execute(ctx, parts)
 
     async def on_command_error(self, _, cmd, ctx, e):
-        errors_count = int(await self.redis.get(f"errors:{ctx.author.id}") or 0)
-        if errors_count > 10:
-            # temp silent blacklist
-            await self.redis.setex(f"blacklist:{ctx.author.id}", random.randint(60 * 15, 60 * 30), 1)
-            return
-
-        else:
-            await self.redis.setex(f"errors:{ctx.author.id}", random.randint(5, 15), errors_count + 1)
-
         if isinstance(e, asyncio.CancelledError):
             return
 
         if isinstance(e, FormatRaise):
             await ctx.f_send(*e.args, **e.kwargs, f=e.f)
+            return
 
         elif isinstance(e, CommandNotFound):
-            pass
+            return
 
-        elif isinstance(e, NotEnoughArguments):
+        errors_count = int(await self.redis.get(f"errors:{ctx.author.id}") or 0)
+        if errors_count > 10:
+            # temp silent blacklist
+            await self.redis.setex(f"blacklist:{ctx.author.id}", random.randint(60 * 60, 60 * 60 * 3), 1)
+            return
+
+        else:
+            await self.redis.setex(f"errors:{ctx.author.id}", random.randint(5, 15), errors_count + 1)
+
+        if isinstance(e, NotEnoughArguments):
             await ctx.f_send(
                 f"The command `{cmd.full_name}` is **missing the `{e.parameter.name}` argument**.\n"
                 f"Use `{self.prefix}help {cmd.full_name}` to get more information.",
