@@ -115,7 +115,7 @@ class HTTPClient:
         self.global_over = asyncio.Event()
         self.global_over.set()
         self.ratelimits = weakref.WeakValueDictionary()
-        self.semaphore = asyncio.Semaphore(value=250)
+        self.semaphore = asyncio.Semaphore(value=50)
 
         user_agent = 'DiscordBot (https://github.com/Magic-Bots/xenon-worker) Python/{0[0]}.{0[1]} aiohttp/{1}'
         self.user_agent = user_agent.format(sys.version_info, aiohttp.__version__)
@@ -175,7 +175,7 @@ class HTTPClient:
             unlock = True
 
             await self.semaphore.acquire()
-            await self.redis.set(f"requests:running", 250 - self.semaphore._value)
+            await self.redis.set(f"requests:running", 50 - self.semaphore._value)
             await self.redis.set(f"requests:waiting", len(self.semaphore._waiters))
 
             try:
