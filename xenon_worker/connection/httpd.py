@@ -171,12 +171,12 @@ class HTTPClient:
             if not self.global_over.is_set():
                 await self.global_over.wait()
 
+            await lock.acquire()
+            unlock = True
+
             await self.semaphore.acquire()
             await self.redis.set(f"requests:running", 250 - self.semaphore._value)
             await self.redis.set(f"requests:waiting", len(self.semaphore._waiters))
-
-            await lock.acquire()
-            unlock = True
 
             try:
                 await self.redis.hincrby(f"requests", f"{route.method}:{route.path}", 1)
