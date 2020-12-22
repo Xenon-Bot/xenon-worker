@@ -141,7 +141,7 @@ def not_in_maintenance(callback):
 
         return True
 
-    return check
+    return Check(check, callback)
 
 
 class CooldownType(Enum):
