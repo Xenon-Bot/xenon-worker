@@ -172,6 +172,8 @@ class HTTPClient:
                 await self.global_over.wait()
 
             await self.semaphore.acquire()
+            await self.redis.set(f"requests:running", 250 - self.semaphore._value)
+            await self.redis.set(f"requests:waiting", len(self.semaphore._waiters))
 
             await lock.acquire()
             unlock = True
@@ -240,6 +242,8 @@ class HTTPClient:
                         raise HTTPException(r, data)
             finally:
                 self.semaphore.release()
+                await self.redis.set(f"requests:running", 250 - self.semaphore._value)
+                await self.redis.set(f"requests:waiting", len(self.semaphore._waiters))
                 if unlock and lock.locked():
                     lock.release()
 
