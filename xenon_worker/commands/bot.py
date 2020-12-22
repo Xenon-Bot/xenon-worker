@@ -48,6 +48,7 @@ class RabbitBot(RabbitClient, CommandTable):
 
         is_blacklisted = await self.redis.exists(f"blacklist:{bucket}")
         if is_blacklisted:
+            await self.redis.incr("commands:blocked")
             await self.redis.setex(f"blacklist:{bucket}", random.randint(60 * 15, 60 * 60), 1)
             return
 
