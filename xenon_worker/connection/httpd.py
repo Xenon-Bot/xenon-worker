@@ -242,7 +242,7 @@ class HTTPClient:
                         raise HTTPException(r, data)
             finally:
                 self.semaphore.release()
-                await self.redis.set(f"requests:running", 250 - self.semaphore._value)
+                await self.redis.set(f"requests:running", 50 - self.semaphore._value)
                 await self.redis.set(f"requests:waiting", len(self.semaphore._waiters))
                 if unlock and lock.locked():
                     lock.release()
