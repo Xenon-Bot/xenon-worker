@@ -46,8 +46,8 @@ class RabbitBot(RabbitClient, CommandTable):
 
         bucket = msg.guild_id or msg.author.id
 
-        is_blacklisted = await self.redis.get(f"blacklist:{bucket}")
-        if is_blacklisted is not None:
+        is_blacklisted = await self.redis.exists(f"blacklist:{bucket}")
+        if is_blacklisted:
             await self.redis.setex(f"blacklist:{bucket}", random.randint(60 * 15, 60 * 60), 1)
             return
 
@@ -146,6 +146,13 @@ class RabbitBot(RabbitClient, CommandTable):
         elif isinstance(e, NotADMChannel):
             await ctx.f_send(
                 "This command can **only** be used in **direct messages**.",
+                f=self.f.ERROR
+            )
+
+        elif isinstance(e, BotInMaintenance):
+            await ctx.f_send(
+                "The bot is currently in **maintenance**. This command can not be used during maintenance,"
+                " please be patient and **try again in a few minutes**.",
                 f=self.f.ERROR
             )
 

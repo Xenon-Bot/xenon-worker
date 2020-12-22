@@ -133,6 +133,17 @@ def dm_only(callback):
     return Check(check, callback)
 
 
+def not_in_maintenance(callback):
+    async def check(ctx, *args, **kwargs):
+        in_maintenance = await ctx.bot.redis.exists("maintenance")
+        if in_maintenance:
+            raise BotInMaintenance()
+
+        return True
+
+    return check
+
+
 class CooldownType(Enum):
     GLOBAL = 0
     GUILD = 1

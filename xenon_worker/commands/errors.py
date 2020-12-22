@@ -48,6 +48,10 @@ class NotADMChannel(CheckFailed):
     pass
 
 
+class BotInMaintenance(CheckFailed):
+    pass
+
+
 class CommandOnCooldown(CheckFailed):
     def __init__(self, rate, per, bucket, remaining, warned=False):
         self.per = per
