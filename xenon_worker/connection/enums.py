@@ -9,6 +9,9 @@ class ChannelType(Enum):
     GUILD_CATEGORY = 4
     GUILD_NEWS = 5
     GUILD_STORE = 6
+    PUBLIC_GUILD_THREAD = 11
+    PRIVATE_GUILD_THREAD = 12
+    GUILD_STAGE = 13
 
 
 class DefaultMessageNotifications(Enum):
