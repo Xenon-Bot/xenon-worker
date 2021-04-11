@@ -120,10 +120,6 @@ class HTTPClient:
         user_agent = 'DiscordBot (https://github.com/Magic-Bots/xenon-worker) Python/{0[0]}.{0[1]} aiohttp/{1}'
         self.user_agent = user_agent.format(sys.version_info, aiohttp.__version__)
 
-    def recreate(self):
-        if self.__session.closed:
-            self.__session = aiohttp.ClientSession(connector=self.connector)
-
     async def request(self, route, *, files=None, **kwargs):
         bucket = route.bucket
         method = route.method
