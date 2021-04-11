@@ -199,7 +199,7 @@ class HTTPClient:
 
                     # we are being rate limited
                     elif r.status == 429:
-                        await self.redis.hincrby(f"429", route.path, 1)
+                        await self.redis.hincrby(f"responses:429", f"{route.method}:{route.path}", 1)
                         if not r.headers.get('Via'):
                             # Banned by Cloudflare more than likely.
                             raise HTTPException(r, data)
