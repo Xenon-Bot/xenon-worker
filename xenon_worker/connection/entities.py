@@ -102,7 +102,7 @@ class Channel(Entity):
 
 
 class User(Entity):
-    __slots__ = ("username", "discriminator", "avatar", "bot", "system", "mfa_enabled")
+    __slots__ = ("username", "discriminator", "avatar", "bot", "system", "mfa_enabled", "public_flags")
 
     @property
     def name(self):

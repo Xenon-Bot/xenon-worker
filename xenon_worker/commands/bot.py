@@ -48,7 +48,9 @@ class RabbitBot(RabbitClient, CommandTable):
         bucket = msg.guild_id or msg.author.id
 
         is_blacklisted = await self.redis.exists(f"blacklist:{bucket}")
-        if is_blacklisted or msg.author.created_at > (datetime.utcnow() - timedelta(days=1)):
+        susicious = msg.author.created_at > (datetime.utcnow() - timedelta(days=7)) and \
+                    (msg.author.public_flags or 0) == 0
+        if is_blacklisted or susicious:
             await self.redis.incr("commands:blocked")
             await self.redis.setex(f"blacklist:{bucket}", random.randint(60 * 15, 60 * 60), 1)
             return
