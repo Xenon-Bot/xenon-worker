@@ -199,7 +199,6 @@ class HTTPClient:
 
                     # we are being rate limited
                     elif r.status == 429:
-                        await self.redis.hincrby(f"responses:429", f"{route.method}:{route.path}", 1)
                         if not r.headers.get('Via'):
                             # Banned by Cloudflare more than likely.
                             raise HTTPException(r, data)
@@ -210,11 +209,13 @@ class HTTPClient:
                         # check if it's a global rate limit
                         is_global = data.get('global', False)
                         if is_global:
+                            await self.redis.hincrby(f"responses:429", f"global", 1)
                             log.warning('Global rate limit has been hit. Retrying in %.2f seconds.', retry_after)
                             self.global_over.clear()
                             self.loop.call_later(retry_after, self.global_over.set)
 
                         else:
+                            await self.redis.hincrby(f"responses:429", f"{route.method}:{route.path}", 1)
                             log.warning(
                                 'We are being rate limited. Retrying in %.2f seconds. Handled under the bucket "%s"',
                                 retry_after, bucket
