@@ -63,6 +63,9 @@ class Formatter:
             "author": {
                 "name": f.title,
                 "icon_url": f.icon
+            },
+            "footer": {
+                "text": "Xenon is now primarily using Slash Commands, please consider switching!"
             }
         }
 
