@@ -64,16 +64,21 @@ class Formatter:
                 "name": f.title,
                 "icon_url": f.icon
             },
-            "footer": {
-                "text": "Xenon is now primarily using Slash Commands, please consider switching!",
-                "icon_url": "https://cdn.discordapp.com/attachments/633228945105354774/766659927623204904/678136-shield-warning-512.png"
-            }
+        }
+
+        legacy_warning = {
+            "color": Formatter.WARNING.color,
+            "author": {
+                "name": "Xenon is now primarily using Slash Commands",
+                "icon_url": Formatter.WARNING.icon
+            },
+            "description": "Please consider switching. Just type `/` into the chat box to discover Slash Commands."
         }
 
         if embed is not None:
             formatted.update(embed)
 
         return dict(
-            embed=formatted,
+            embeds=[formatted, legacy_warning],
             **kwargs
         )
